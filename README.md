@@ -88,12 +88,6 @@ fastimage/
 **Optional folders** (add when needed):
 - `src/test/java/` - JUnit tests (Maven recognizes automatically)
 
-**Optional markdown docs** (root level, as needed):
-- `BENCHMARK.md` - Performance results
-- `TODO.md` - Development roadmap
-- `DEPLOYMENT.md` - Release guide
-- `PROMOTION.md` - Social media content
-
 **Why `examples/` on root level?**
 - Not part of the library → separate mini-projects
 - Not tests → tutorials for users
