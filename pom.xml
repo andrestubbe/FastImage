@@ -67,6 +67,17 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>build</directory>
+                <includes>
+                    <include>*.dll</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
         <plugins>
             <!-- Maven Compiler Plugin -->
             <plugin>
@@ -151,26 +162,7 @@
     </build>
 
     <profiles>
-        <!-- Native Library Profile -->
-        <profile>
-            <id>native</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <build>
-                <resources>
-                    <resource>
-                        <directory>build</directory>
-                        <includes>
-                            <include>*.dll</include>
-                        </includes>
-                    </resource>
-                    <resource>
-                        <directory>src/main/resources</directory>
-                    </resource>
-                </resources>
-            </build>
-        </profile>
+        <!-- Empty - profiles can be added later if needed -->
 
         <!-- Release Profile (for Maven Central) -->
         <profile>
