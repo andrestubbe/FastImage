@@ -1,0 +1,14 @@
+LIBRARY fastimage
+EXPORTS
+    Java_fastimage_FastImage_nativeCreate
+    Java_fastimage_FastImage_nativeCreateEmpty
+    Java_fastimage_FastImage_nativeDispose
+    Java_fastimage_FastImage_nativeResize
+    Java_fastimage_FastImage_nativeBlur
+    Java_fastimage_FastImage_nativeGrayscale
+    Java_fastimage_FastImage_nativeBrightness
+    Java_fastimage_FastImage_nativeContrast
+    Java_fastimage_FastImage_nativeFlipH
+    Java_fastimage_FastImage_nativeFlipV
+    Java_fastimage_FastImage_nativeCrop
+    Java_fastimage_FastImage_nativeGetPixels

@@ -1,0 +1,11 @@
+LIBRARY fastXXX
+EXPORTS
+    ; FastXXX Core API
+    Java_fastXXX_FastXXX_startMonitoring
+    Java_fastXXX_FastXXX_stopMonitoring
+    
+    ; Add your JNI exports here
+    ; Format: Java_packagename_Classname_methodName
+    ; Example:
+    ; Java_fastXXX_FastXXXTerminal_getWindowHandle
+    ; Java_fastXXX_FastXXXTerminal_setWindowTransparency
