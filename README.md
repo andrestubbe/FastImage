@@ -55,18 +55,6 @@ repositories { maven { url 'https://jitpack.io' } }
 dependencies { implementation 'com.github.andrestubbe:fastimage:v1.0.0' }
 ```
 
-### Gradle (via JitPack)
-
-```groovy
-repositories {
-    maven { url 'https://jitpack.io' }
-}
-
-dependencies {
-    implementation 'com.github.andrestubbe:fastimage:v1.0.0'
-}
-```
-
 ### Direct Download
 
 Download JAR from [Releases](https://github.com/andrestubbe/FastImage/releases)
