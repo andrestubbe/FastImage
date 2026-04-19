@@ -1,0 +1,35 @@
+[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for fastimage.examples:image-benchmark:jar:1.0.0
+[WARNING] 'dependencies.dependency.systemPath' for io.github.andrestubbe:fastimage:jar should not point at files within the project directory, ${project.basedir}/../../target/fastimage-1.0.0-SNAPSHOT.jar will be unresolvable by dependent projects @ line 36, column 25
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] 
+[INFO] -----------------< fastimage.examples:image-benchmark >-----------------
+[INFO] Building FastImage - Performance Benchmark 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.1.0:java (default-cli) @ image-benchmark ---
+[WARNING] 
+java.lang.ClassNotFoundException: fastimage.ImageBenchmark
+    at org.codehaus.mojo.exec.URLClassLoaderBuilder$ExecJavaClassLoader.loadClass (URLClassLoaderBuilder.java:198)
+    at java.lang.ClassLoader.loadClass (ClassLoader.java:490)
+    at org.codehaus.mojo.exec.ExecJavaMojo$1.run (ExecJavaMojo.java:271)
+    at java.lang.Thread.run (Thread.java:1474)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.144 s
+[INFO] Finished at: 2026-04-15T10:45:17+02:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.codehaus.mojo:exec-maven-plugin:3.1.0:java (default-cli) on project image-benchmark: An exception occurred while executing the Java class. fastimage.ImageBenchmark -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

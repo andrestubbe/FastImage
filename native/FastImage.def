@@ -4,7 +4,12 @@ EXPORTS
     Java_fastimage_FastImage_nativeCreateEmpty
     Java_fastimage_FastImage_nativeDispose
     Java_fastimage_FastImage_nativeResize
-    Java_fastimage_FastImage_nativeBlur
+    Java_fastimage_FastImage_nativeBlurBox
+    Java_fastimage_FastImage_nativeBlurGaussian
+    Java_fastimage_FastImage_nativeBlurStack
+    Java_fastimage_FastImage_nativeBlurKawase
+    Java_fastimage_FastImage_nativeBlurDualKawase
+    Java_fastimage_FastImage_nativeBlurMipmapped
     Java_fastimage_FastImage_nativeGrayscale
     Java_fastimage_FastImage_nativeBrightness
     Java_fastimage_FastImage_nativeContrast

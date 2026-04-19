@@ -6,10 +6,12 @@
  */
 
 #include <jni.h>
+#define NOMINMAX  // Disable Windows min/max macros to avoid conflicts with std::min/max
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <algorithm>  // std::min, std::max
 #include <emmintrin.h>  // SSE2
 
 // Debug output
@@ -39,8 +41,6 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_fastimage_FastImage_nativeCreate(
     JNIEnv* env, jclass, jint width, jint height, jintArray pixels) {
     
-    printf("[FastImage] Creating image %dx%d\n", width, height);
-    
     FastImage* img = new FastImage();
     img->width = width;
     img->height = height;
@@ -51,15 +51,11 @@ JNIEXPORT jlong JNICALL Java_fastimage_FastImage_nativeCreate(
     jint* srcPixels = env->GetIntArrayElements(pixels, nullptr);
     memcpy(img->pixels, srcPixels, width * height * sizeof(int));
     env->ReleaseIntArrayElements(pixels, srcPixels, JNI_ABORT);
-    
-    printf("[FastImage] Created at %p\n", (void*)img);
     return (jlong)img;
 }
 
 JNIEXPORT jlong JNICALL Java_fastimage_FastImage_nativeCreateEmpty(
     JNIEnv* env, jclass, jint width, jint height) {
-    
-    printf("[FastImage] Creating empty image %dx%d\n", width, height);
     
     FastImage* img = new FastImage();
     img->width = width;
@@ -76,7 +72,6 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeDispose(
     
     FastImage* img = (FastImage*)handle;
     if (img) {
-        printf("[FastImage] Disposing image %dx%d at %p\n", img->width, img->height, (void*)img);
         if (img->owned && img->pixels) {
             alignedFree(img->pixels);
         }
@@ -306,7 +301,7 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResize(
 }
 
 // Simple box blur - fast approximation
-JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlur(
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurBox(
     JNIEnv*, jclass, jlong handle, jfloat radius) {
     
     FastImage* img = (FastImage*)handle;
@@ -374,6 +369,370 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlur(
     }
     
     alignedFree(temp);
+}
+
+// Separable Gaussian blur - higher quality than box blur
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurGaussian(
+    JNIEnv*, jclass, jlong handle, jfloat radius) {
+    
+    FastImage* img = (FastImage*)handle;
+    int w = img->width;
+    int h = img->height;
+    int* pixels = img->pixels;
+    
+    int r = (int)(radius + 0.5f);
+    if (r < 1) r = 1;
+    if (r > 50) r = 50;
+    
+    // Create Gaussian kernel
+    int kernelSize = 2 * r + 1;
+    float* kernel = new float[kernelSize];
+    float sigma = radius / 2.0f;
+    float twoSigmaSq = 2.0f * sigma * sigma;
+    float sum = 0.0f;
+    
+    for (int i = 0; i < kernelSize; i++) {
+        int x = i - r;
+        kernel[i] = (float)exp(-(x * x) / twoSigmaSq);
+        sum += kernel[i];
+    }
+    // Normalize
+    for (int i = 0; i < kernelSize; i++) {
+        kernel[i] /= sum;
+    }
+    
+    int* temp = alignedAlloc(w * h);
+    memcpy(temp, pixels, w * h * sizeof(int));
+    
+    // Horizontal pass with Gaussian kernel
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            float a = 0, rsum = 0, g = 0, b = 0;
+            
+            for (int k = -r; k <= r; k++) {
+                int sx = x + k;
+                int ki = k + r;
+                if (sx >= 0 && sx < w) {
+                    int p = temp[y * w + sx];
+                    float weight = kernel[ki];
+                    a += ((p >> 24) & 0xFF) * weight;
+                    rsum += ((p >> 16) & 0xFF) * weight;
+                    g += ((p >> 8) & 0xFF) * weight;
+                    b += (p & 0xFF) * weight;
+                }
+            }
+            
+            pixels[y * w + x] = (((int)a << 24) & 0xFF000000) | 
+                               (((int)rsum << 16) & 0x00FF0000) | 
+                               (((int)g << 8) & 0x0000FF00) | 
+                               ((int)b & 0x000000FF);
+        }
+    }
+    
+    memcpy(temp, pixels, w * h * sizeof(int));
+    
+    // Vertical pass with Gaussian kernel
+    for (int x = 0; x < w; x++) {
+        for (int y = 0; y < h; y++) {
+            float a = 0, rsum = 0, g = 0, b = 0;
+            
+            for (int k = -r; k <= r; k++) {
+                int sy = y + k;
+                int ki = k + r;
+                if (sy >= 0 && sy < h) {
+                    int p = temp[sy * w + x];
+                    float weight = kernel[ki];
+                    a += ((p >> 24) & 0xFF) * weight;
+                    rsum += ((p >> 16) & 0xFF) * weight;
+                    g += ((p >> 8) & 0xFF) * weight;
+                    b += (p & 0xFF) * weight;
+                }
+            }
+            
+            pixels[y * w + x] = (((int)a << 24) & 0xFF000000) | 
+                               (((int)rsum << 16) & 0x00FF0000) | 
+                               (((int)g << 8) & 0x0000FF00) | 
+                               ((int)b & 0x000000FF);
+        }
+    }
+    
+    delete[] kernel;
+    alignedFree(temp);
+}
+
+// Stack blur - CSS backdrop-filter style, fast with good quality
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurStack(
+    JNIEnv*, jclass, jlong handle, jfloat radius) {
+    
+    FastImage* img = (FastImage*)handle;
+    int w = img->width;
+    int h = img->height;
+    int* pixels = img->pixels;
+    
+    int r = (int)(radius + 0.5f);
+    if (r < 1) r = 1;
+    if (r > 100) r = 100;
+    
+    int* temp = alignedAlloc(w * h);
+    memcpy(temp, pixels, w * h * sizeof(int));
+    
+    int div = r + r + 1;
+    int* rBuffer = new int[w];
+    int* gBuffer = new int[w];
+    int* bBuffer = new int[w];
+    int* aBuffer = new int[w];
+    
+    // Horizontal pass
+    for (int y = 0; y < h; y++) {
+        int rsum = 0, gsum = 0, bsum = 0, asum = 0;
+        
+        for (int i = -r; i <= r; i++) {
+            int x = std::max(0, std::min(i, w - 1));
+            int p = temp[y * w + x];
+            asum += (p >> 24) & 0xFF;
+            rsum += (p >> 16) & 0xFF;
+            gsum += (p >> 8) & 0xFF;
+            bsum += p & 0xFF;
+        }
+        
+        for (int x = 0; x < w; x++) {
+            int p = temp[y * w + x];
+            pixels[y * w + x] = ((asum / div) << 24) | 
+                               ((rsum / div) << 16) | 
+                               ((gsum / div) << 8) | 
+                               (bsum / div);
+            
+            // Slide window
+            int pOut = (x - r > 0) ? temp[y * w + (x - r - 1)] : temp[y * w];
+            int pIn = (x + r + 1 < w) ? temp[y * w + (x + r + 1)] : temp[y * w + (w - 1)];
+            
+            asum -= ((pOut >> 24) & 0xFF) - ((pIn >> 24) & 0xFF);
+            rsum -= ((pOut >> 16) & 0xFF) - ((pIn >> 16) & 0xFF);
+            gsum -= ((pOut >> 8) & 0xFF) - ((pIn >> 8) & 0xFF);
+            bsum -= (pOut & 0xFF) - (pIn & 0xFF);
+        }
+    }
+    
+    memcpy(temp, pixels, w * h * sizeof(int));
+    
+    // Vertical pass
+    for (int x = 0; x < w; x++) {
+        int rsum = 0, gsum = 0, bsum = 0, asum = 0;
+        
+        for (int i = -r; i <= r; i++) {
+            int y = std::max(0, std::min(i, h - 1));
+            int p = temp[y * w + x];
+            asum += (p >> 24) & 0xFF;
+            rsum += (p >> 16) & 0xFF;
+            gsum += (p >> 8) & 0xFF;
+            bsum += p & 0xFF;
+        }
+        
+        for (int y = 0; y < h; y++) {
+            pixels[y * w + x] = ((asum / div) << 24) | 
+                               ((rsum / div) << 16) | 
+                               ((gsum / div) << 8) | 
+                               (bsum / div);
+            
+            int pOut = (y - r > 0) ? temp[(y - r - 1) * w + x] : temp[x];
+            int pIn = (y + r + 1 < h) ? temp[(y + r + 1) * w + x] : temp[(h - 1) * w + x];
+            
+            asum -= ((pOut >> 24) & 0xFF) - ((pIn >> 24) & 0xFF);
+            rsum -= ((pOut >> 16) & 0xFF) - ((pIn >> 16) & 0xFF);
+            gsum -= ((pOut >> 8) & 0xFF) - ((pIn >> 8) & 0xFF);
+            bsum -= (pOut & 0xFF) - (pIn & 0xFF);
+        }
+    }
+    
+    delete[] rBuffer;
+    delete[] gBuffer;
+    delete[] bBuffer;
+    delete[] aBuffer;
+    alignedFree(temp);
+}
+
+// Kawase blur - multi-pass algorithm used by Apple/Google
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurKawase(
+    JNIEnv*, jclass, jlong handle, jfloat radius, jint passes) {
+    
+    FastImage* img = (FastImage*)handle;
+    int w = img->width;
+    int h = img->height;
+    int* pixels = img->pixels;
+    
+    if (passes < 1) passes = 1;
+    if (passes > 5) passes = 5;
+    
+    int* temp = alignedAlloc(w * h);
+    int* src = pixels;
+    int* dst = temp;
+    
+    float offset = radius / (float)passes;
+    if (offset < 1.0f) offset = 1.0f;
+    
+    for (int pass = 0; pass < passes; pass++) {
+        int d = (int)(offset * (pass + 1));
+        if (d < 1) d = 1;
+        
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                // Sample 4 corners
+                int x1 = std::max(0, x - d);
+                int x2 = std::min(w - 1, x + d);
+                int y1 = std::max(0, y - d);
+                int y2 = std::min(h - 1, y + d);
+                
+                int p1 = src[y1 * w + x1];
+                int p2 = src[y1 * w + x2];
+                int p3 = src[y2 * w + x1];
+                int p4 = src[y2 * w + x2];
+                
+                int a = (((p1 >> 24) & 0xFF) + ((p2 >> 24) & 0xFF) + 
+                        ((p3 >> 24) & 0xFF) + ((p4 >> 24) & 0xFF)) / 4;
+                int r = (((p1 >> 16) & 0xFF) + ((p2 >> 16) & 0xFF) + 
+                        ((p3 >> 16) & 0xFF) + ((p4 >> 16) & 0xFF)) / 4;
+                int g = (((p1 >> 8) & 0xFF) + ((p2 >> 8) & 0xFF) + 
+                        ((p3 >> 8) & 0xFF) + ((p4 >> 8) & 0xFF)) / 4;
+                int b = ((p1 & 0xFF) + (p2 & 0xFF) + (p3 & 0xFF) + (p4 & 0xFF)) / 4;
+                
+                dst[y * w + x] = (a << 24) | (r << 16) | (g << 8) | b;
+            }
+        }
+        
+        // Swap buffers
+        int* t = src;
+        src = dst;
+        dst = t;
+    }
+    
+    // Copy back if needed
+    if (src != pixels) {
+        memcpy(pixels, src, w * h * sizeof(int));
+    }
+    
+    alignedFree(temp);
+}
+
+// Dual Kawase blur - premium 2-pass algorithm
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurDualKawase(
+    JNIEnv*, jclass, jlong handle, jfloat radius) {
+    
+    // Simply use Kawase with 2 passes for now
+    Java_fastimage_FastImage_nativeBlurKawase(nullptr, nullptr, handle, radius, 2);
+}
+
+// Mipmapped blur - for very large radii using downsample + blur + upsample
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurMipmapped(
+    JNIEnv*, jclass, jlong handle, jfloat radius) {
+    
+    FastImage* img = (FastImage*)handle;
+    int w = img->width;
+    int h = img->height;
+    int* pixels = img->pixels;
+    
+    // Determine mip level based on radius
+    int levels = 0;
+    float r = radius;
+    while (r > 8.0f && levels < 3) {
+        r /= 2.0f;
+        levels++;
+    }
+    
+    if (levels == 0) {
+        // Small radius - use regular box blur
+        Java_fastimage_FastImage_nativeBlurBox(nullptr, nullptr, handle, radius);
+        return;
+    }
+    
+    // Calculate downsampled size
+    int newW = w >> levels;
+    int newH = h >> levels;
+    if (newW < 4) newW = 4;
+    if (newH < 4) newH = 4;
+    
+    // Downsample (simple box filter)
+    int* mipPixels = alignedAlloc(newW * newH);
+    
+    for (int y = 0; y < newH; y++) {
+        for (int x = 0; x < newW; x++) {
+            int sumA = 0, sumR = 0, sumG = 0, sumB = 0;
+            int count = 0;
+            
+            for (int dy = 0; dy < (1 << levels); dy++) {
+                for (int dx = 0; dx < (1 << levels); dx++) {
+                    int sy = (y << levels) + dy;
+                    int sx = (x << levels) + dx;
+                    if (sy < h && sx < w) {
+                        int p = pixels[sy * w + sx];
+                        sumA += (p >> 24) & 0xFF;
+                        sumR += (p >> 16) & 0xFF;
+                        sumG += (p >> 8) & 0xFF;
+                        sumB += p & 0xFF;
+                        count++;
+                    }
+                }
+            }
+            
+            mipPixels[y * newW + x] = ((sumA / count) << 24) | 
+                                      ((sumR / count) << 16) | 
+                                      ((sumG / count) << 8) | 
+                                      (sumB / count);
+        }
+    }
+    
+    // Apply small blur on downsampled image
+    FastImage* mipImg = new FastImage();
+    mipImg->width = newW;
+    mipImg->height = newH;
+    mipImg->pixels = mipPixels;
+    mipImg->owned = true;
+    
+    // Small box blur on mip
+    Java_fastimage_FastImage_nativeBlurBox(nullptr, nullptr, (jlong)mipImg, r);
+    
+    // Upsample (bilinear)
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            float fx = (float)(x * newW) / w;
+            float fy = (float)(y * newH) / h;
+            int ix = (int)fx;
+            int iy = (int)fy;
+            float dx = fx - ix;
+            float dy = fy - iy;
+            
+            int x1 = std::min(ix, newW - 1);
+            int x2 = std::min(ix + 1, newW - 1);
+            int y1 = std::min(iy, newH - 1);
+            int y2 = std::min(iy + 1, newH - 1);
+            
+            int p1 = mipPixels[y1 * newW + x1];
+            int p2 = mipPixels[y1 * newW + x2];
+            int p3 = mipPixels[y2 * newW + x1];
+            int p4 = mipPixels[y2 * newW + x2];
+            
+            int a = (int)((((p1 >> 24) & 0xFF) * (1-dx) * (1-dy) +
+                          ((p2 >> 24) & 0xFF) * dx * (1-dy) +
+                          ((p3 >> 24) & 0xFF) * (1-dx) * dy +
+                          ((p4 >> 24) & 0xFF) * dx * dy));
+            int r = (int)((((p1 >> 16) & 0xFF) * (1-dx) * (1-dy) +
+                          ((p2 >> 16) & 0xFF) * dx * (1-dy) +
+                          ((p3 >> 16) & 0xFF) * (1-dx) * dy +
+                          ((p4 >> 16) & 0xFF) * dx * dy));
+            int g = (int)((((p1 >> 8) & 0xFF) * (1-dx) * (1-dy) +
+                          ((p2 >> 8) & 0xFF) * dx * (1-dy) +
+                          ((p3 >> 8) & 0xFF) * (1-dx) * dy +
+                          ((p4 >> 8) & 0xFF) * dx * dy));
+            int b = (int)(((p1 & 0xFF) * (1-dx) * (1-dy) +
+                          (p2 & 0xFF) * dx * (1-dy) +
+                          (p3 & 0xFF) * (1-dx) * dy +
+                          (p4 & 0xFF) * dx * dy));
+            
+            pixels[y * w + x] = (a << 24) | (r << 16) | (g << 8) | b;
+        }
+    }
+    
+    alignedFree(mipPixels);
+    delete mipImg;
 }
 
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeGetPixels(

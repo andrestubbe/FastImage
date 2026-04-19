@@ -31,9 +31,8 @@
     <developers>
         <developer>
             <name>FastJava Team</name>
-            <email>info@fastjava.dev</email>
-            <organization>FastJava</organization>
-            <organizationUrl>https://fastjava.dev</organizationUrl>
+                        <organization>FastJava</organization>
+            <organizationUrl>https://github.com/andrestubbe</organizationUrl>
         </developer>
     </developers>
 
@@ -56,6 +55,13 @@
             <groupId>com.github.andrestubbe</groupId>
             <artifactId>fastcore</artifactId>
             <version>v1.0.0</version>
+        </dependency>
+        <!-- FastTheme for demo UI (optional) -->
+        <dependency>
+            <groupId>com.github.andrestubbe</groupId>
+            <artifactId>fasttheme</artifactId>
+            <version>v1.0.0</version>
+            <optional>true</optional>
         </dependency>
         <!-- JUnit 5 for testing -->
         <dependency>

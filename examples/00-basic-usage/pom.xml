@@ -27,11 +27,13 @@
     </repositories>
 
     <dependencies>
-        <!-- FastImage Library -->
+        <!-- FastImage Library (local) -->
         <dependency>
-            <groupId>com.github.andrestubbe</groupId>
+            <groupId>io.github.andrestubbe</groupId>
             <artifactId>fastimage</artifactId>
-            <version>v1.0.0</version>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/../../target/fastimage-1.0.0-SNAPSHOT.jar</systemPath>
         </dependency>
     </dependencies>
 

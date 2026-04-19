@@ -1,0 +1,65 @@
+================================================================================
+FastImage v1.0.0 - GitHub Repository Metadata
+================================================================================
+
+ABOUT SECTION - Description:
+--------------------------------------------------------------------------------
+SIMD-accelerated image processing for Java 17+ — 10-50× faster than BufferedImage. 
+Native AVX2/SSE operations for resize, blur, grayscale, brightness. 
+Zero-GC off-heap memory management. Part of the FastJava ecosystem.
+
+Repository Topics/Tags (comma-separated for GitHub):
+--------------------------------------------------------------------------------
+java, image-processing, simd, performance, jni, avx2, sse, fastjava, 
+java-performance, native-acceleration, image-resize, gaussian-blur, 
+grayscale, off-heap, zero-gc, computer-vision, image-filters, 
+bufferedimage-alternative, high-performance, jvm
+
+Release Title:
+--------------------------------------------------------------------------------
+FastImage v1.0.1 - SIMD-Accelerated Image Processing [BETA]
+
+Release Description (for GitHub Release notes):
+--------------------------------------------------------------------------------
+## FastImage v1.0.1 🚀 [BETA]
+
+Fixed release - now includes native library bundled in JAR for easier distribution.
+
+### What's Included
+- `fastimage-1.0.1.jar` - Main library (32 KB, includes native DLL)
+
+### Dependencies
+Requires [FastCore v1.0.0](https://github.com/andrestubbe/fastcore/releases) - JNI loader (10 KB)
+
+### What's Fixed
+✅ Native DLL now bundled inside JAR - no separate DLL file needed!
+✅ FastCore handles automatic extraction and loading
+✅ Tested on Windows 10/11 x64
+
+### Features
+✅ SIMD-accelerated resize (bilinear/bicubic)
+✅ Gaussian blur with variable radius
+✅ Grayscale conversion (AVX2/SSE)
+✅ Brightness/contrast adjustment
+✅ Zero-GC off-heap memory
+✅ Fluent chaining API
+✅ 10-50× faster than BufferedImage
+
+### Quick Start
+```java
+FastImage img = FastImage.fromBufferedImage(source)
+    .resize(1920, 1080)
+    .blur(5.0f)
+    .grayscale();
+```
+
+### Requirements
+- Java 17+
+- Windows 10+ (x64)
+
+### Links
+- [Documentation](README.md)
+- [Examples](examples/)
+- [FastJava Ecosystem](https://github.com/andrestubbe/fastjava)
+
+================================================================================

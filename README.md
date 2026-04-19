@@ -1,8 +1,10 @@
-# FastImage — High-Performance Image Processing for Java
+# FastImage — High-performance image processing for Java
 
 > **SIMD-accelerated, off-heap image processing — 10-50× faster than BufferedImage**
 > 
 > Native speed for Java: Resize, blur, grayscale, brightness with zero GC pressure
+>
+> 🚧 **ALPHA — Daily Active Development — Infrastructure in Progress** 🚧
 
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
 [![Maven](https://img.shields.io/badge/Maven-3.9+-orange.svg)](https://maven.apache.org)
@@ -26,6 +28,8 @@ FastImage img = FastImage.fromBufferedImage(source)
 BufferedImage result = img.toBufferedImage();
 img.dispose();  // Free native memory
 ```
+
+> **Design Philosophy:** Stream-API Pattern + Mutable State for Performance + Image Processing Pipeline Mentality. Unlike Java Streams (immutable) or BufferedImageOps (copy-heavy), FastImage uses in-place operations on native off-heap memory. This allows zero-copy chaining: `resize().blur().grayscale()` all work on the same buffer. The fluent API was dictated by the requirements: native SIMD speed requires eliminating intermediate copies.
 
 ---
 
@@ -158,10 +162,14 @@ Result: Side-by-side comparison BufferedImage vs FastImage
 
 | Module | Purpose | Link |
 |--------|---------|------|
-| **FastCore** | JNI loader | [GitHub](https://github.com/andrestubbe/FastCore) |
-| **FastGraphics** | GPU rendering | [GitHub](https://github.com/andrestubbe/FastGraphics) |
-| **FastRobot** | Screen capture | [GitHub](https://github.com/andrestubbe/FastRobot) |
-| **FastMath** | SIMD math | [GitHub](https://github.com/andrestubbe/FastMath) |
+| **FastCore** | JNI loader | ⚠️ Alpha |
+| **FastGraphics** | GPU rendering | ⚠️ Alpha |
+| **FastRobot** | Screen capture | ⚠️ Alpha |
+| **FastMath** | SIMD math | ⚠️ Alpha |
+| **FastImage** | SIMD image processing | ⚠️ Alpha |
+| **FastClipboard** | Native clipboard | ⚠️ Alpha |
+| **FastHotkey** | Global hotkeys | ⚠️ Alpha |
+| **FastTheme** | Theme detection | ⚠️ Alpha |
 
 ## 📚 Examples
 

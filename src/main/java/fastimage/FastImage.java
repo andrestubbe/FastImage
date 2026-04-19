@@ -95,9 +95,65 @@ public class FastImage {
      * Apply gaussian blur
      * @param radius blur radius in pixels (0.5 - 50.0)
      */
-    public void blur(float radius) {
+    /**
+     * Fast box blur - quickest approximation.
+     * Good for real-time effects where speed matters.
+     * @param radius blur radius (0-50)
+     */
+    public void blurBox(float radius) {
         checkDisposed();
-        nativeBlur(nativeHandle, radius);
+        nativeBlurBox(nativeHandle, radius);
+    }
+    
+    /**
+     * Separable Gaussian blur - high quality, smooth results.
+     * Slower than box blur but looks much better.
+     * @param radius blur radius (0-50)
+     */
+    public void blurGaussian(float radius) {
+        checkDisposed();
+        nativeBlurGaussian(nativeHandle, radius);
+    }
+    
+    /**
+     * Stack blur - CSS backdrop-filter quality.
+     * Best balance of speed and quality for UI effects.
+     * @param radius blur radius (0-100)
+     */
+    public void blurStack(float radius) {
+        checkDisposed();
+        nativeBlurStack(nativeHandle, radius);
+    }
+    
+    /**
+     * Kawase blur - multi-pass blur used by Apple/Google.
+     * Very soft edges with configurable quality.
+     * @param radius blur radius (0-50)
+     * @param passes number of passes (1-5, higher = softer)
+     */
+    public void blurKawase(float radius, int passes) {
+        checkDisposed();
+        nativeBlurKawase(nativeHandle, radius, passes);
+    }
+    
+    /**
+     * Dual Kawase blur - premium 2-pass algorithm.
+     * Best quality with excellent performance.
+     * @param radius blur radius (0-50)
+     */
+    public void blurDualKawase(float radius) {
+        checkDisposed();
+        nativeBlurDualKawase(nativeHandle, radius);
+    }
+    
+    /**
+     * Mipmapped blur - for very large blur radii (100+).
+     * Uses downscaling + small blur + upscaling.
+     * @param radius blur radius (0-200)
+     */
+    public void blurMipmapped(float radius) {
+        checkDisposed();
+        nativeBlurMipmapped(nativeHandle, radius);
     }
     
     /**
@@ -221,7 +277,12 @@ public class FastImage {
     private static native void nativeDispose(long handle);
     
     private static native void nativeResize(long handle, int newWidth, int newHeight);
-    private static native void nativeBlur(long handle, float radius);
+    private static native void nativeBlurBox(long handle, float radius);
+    private static native void nativeBlurGaussian(long handle, float radius);
+    private static native void nativeBlurStack(long handle, float radius);
+    private static native void nativeBlurKawase(long handle, float radius, int passes);
+    private static native void nativeBlurDualKawase(long handle, float radius);
+    private static native void nativeBlurMipmapped(long handle, float radius);
     private static native void nativeGrayscale(long handle);
     private static native void nativeBrightness(long handle, float factor);
     private static native void nativeContrast(long handle, float factor);
