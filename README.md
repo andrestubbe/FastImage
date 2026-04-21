@@ -84,7 +84,6 @@ fastimage/
 ├── src/main/java/fastimage/     # Java API
 │   └── FastImage.java
 ├── compile.bat                 # Native build script
-├── COMPILE.md                  # Build instructions
 ├── pom.xml                     # Maven config
 └── README.md                   # This file
 ```
@@ -120,28 +119,9 @@ fastimage/
 - **Effects:** vignette, sepia, threshold
 - **I/O:** PNG/JPEG load/save (parallel encoding)
 
-## Building
+## Build from Source
 
 See [COMPILE.md](COMPILE.md) for detailed build instructions.
-
-### Quick Build
-
-```bash
-# Build native DLL
-compile.bat
-
-# Build JAR with DLL
-mvn clean package -DskipTests
-```
-
-### Run Benchmark
-
-```bash
-cd examples/00-basic-usage
-mvn compile exec:java
-```
-
-Result: Side-by-side comparison BufferedImage vs FastImage
 
 ---
 
