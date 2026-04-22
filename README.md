@@ -1,4 +1,4 @@
-# FastImage — High-performance image processing for Java
+# FastImage — High-performance image processing for Java [ALPHA]
 
 > **SIMD-accelerated, off-heap image processing — 10-50× faster than BufferedImage**
 > 
