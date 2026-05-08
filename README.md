@@ -1,13 +1,21 @@
-# FastImage — SIMD-Accelerated Native Imaging for Java
+# FastImage — SIMD‑Accelerated, Off‑Heap Image Processing for Java
 
-**Ultra-fast image processing using native AVX2/SSE4.1 kernels and off-heap memory.**
+[![FastJava](https://img.shields.io/badge/Ecosystem-FastJava-0078D4.svg?style=for-the-badge&logo=java)](https://github.com/andrestubbe)
+[![Release](https://img.shields.io/badge/Release-v0.1.0--STABLE-green.svg?style=for-the-badge)](https://github.com/andrestubbe/FastImage/releases)
+[![Performance](https://img.shields.io/badge/Performance-10--50x_Faster-blue.svg?style=for-the-badge)](https://github.com/andrestubbe/FastImage#benchmarks)
 
-[![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Standard: BluePrint](https://img.shields.io/badge/Standard-BluePrint-blueviolet.svg)](#)
+**FastImage** ist eine ultra‑schnelle, native‑beschleunigte Image‑Processing‑Engine für Java, gebaut für das FastJava‑Ecosystem. Es kombiniert AVX/SSE SIMD, off‑heap Storage, zero‑copy Pipelines und eine fluent API, um typische BufferedImage‑Operationen **10–50× schneller** auszuführen — ohne GC‑Pressure, ohne Pixel‑Loops, ohne JVM‑Overhead.
 
-FastImage is the high-performance imaging core of the **FastJava** ecosystem. By moving pixel data out of the JVM heap and into **native memory**, it eliminates GC overhead and enables real-time filters (Blur, Contrast, Brightness) at 60+ FPS on 4K images.
+### Highlights
+- ⚡ **SIMD Accelerated**: AVX2 & SSE4.1 optimierte Kernel für maximale CPU-Ausnutzung.
+- 📦 **Off-Heap Memory**: Pixel werden außerhalb des Java-Heaps gespeichert (kein GC-Overhead).
+- 🧬 **Fluent API**: Intuitive Verkettung von Operationen (`resize().blur().grayscale()`).
+- 🛡️ **Fail-Safe JNI**: Robuste Fehlerbehandlung und Bounds-Checks.
+
+---
+
+### Tags
+`java` `image-processing` `simd` `avx` `sse` `native` `jni` `off-heap` `high-performance` `fastjava` `graphics` `zero-copy`
 
 ---
 
