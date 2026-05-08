@@ -11,11 +11,38 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <algorithm>  // std::min, std::max
-#include <emmintrin.h>  // SSE2
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <immintrin.h>
+#include <cstring>
+#include <intrin.h> // For __cpuid
 
-// Debug output
-#include <stdio.h>
+// Helper to throw Java exceptions
+void throwFastImageException(JNIEnv* env, const char* message) {
+    jclass exClass = env->FindClass("fastimage/FastImageException");
+    if (exClass != NULL) {
+        env->ThrowNew(exClass, message);
+    }
+}
+
+// CPU Feature Detection
+struct CPUFeatures {
+    bool avx2;
+    bool sse41;
+    
+    CPUFeatures() {
+        int cpuInfo[4];
+        __cpuid(cpuInfo, 1);
+        sse41 = (cpuInfo[2] & (1 << 19)) != 0;
+        
+        __cpuidex(cpuInfo, 7, 0);
+        avx2 = (cpuInfo[1] & (1 << 5)) != 0;
+    }
+};
+
+static CPUFeatures g_cpu;
 
 // Image structure
 struct FastImage {
@@ -81,58 +108,62 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeDispose(
 
 // === SIMD Operations ===
 
-#include <immintrin.h> // AVX/SSE
-
-// === SIMD Operations ===
-
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeGrayscale(
-    JNIEnv*, jclass, jlong handle) {
+    JNIEnv* env, jclass, jlong handle) {
     
-    FastImage* img = (FastImage*)handle;
-    int count = img->width * img->height;
-    int* pixels = img->pixels;
-    
-    // Constant weights for luminance (approximate for fixed point)
-    // Gray = (R*77 + G*150 + B*29) >> 8
-    __m128i rw = _mm_set1_epi32(77);
-    __m128i gw = _mm_set1_epi32(150);
-    __m128i bw = _mm_set1_epi32(29);
-    __m128i mask = _mm_set1_epi32(0xFF);
-    
-    int i = 0;
-    for (; i <= count - 4; i += 4) {
-        __m128i argb = _mm_loadu_si128((__m128i*)(pixels + i));
-        
-        __m128i r = _mm_and_si128(_mm_srli_epi32(argb, 16), mask);
-        __m128i g = _mm_and_si128(_mm_srli_epi32(argb, 8), mask);
-        __m128i b = _mm_and_si128(argb, mask);
-        __m128i a = _mm_and_si128(_mm_srli_epi32(argb, 24), mask);
-        
-        // Luminance calculation: (r*77 + g*150 + b*29) >> 8
-        __m128i gray = _mm_srli_epi32(
-            _mm_add_epi32(
-                _mm_mullo_epi32(r, rw),
-                _mm_add_epi32(_mm_mullo_epi32(g, gw), _mm_mullo_epi32(b, bw))
-            ), 8);
-        
-        // Reconstruct ARGB
-        __m128i result = _mm_or_si128(
-            _mm_slli_epi32(a, 24),
-            _mm_or_si128(_mm_slli_epi32(gray, 16), 
-                _mm_or_si128(_mm_slli_epi32(gray, 8), gray))
-        );
-        
-        _mm_storeu_si128((__m128i*)(pixels + i), result);
+    if (handle == 0) {
+        throwFastImageException(env, "Native handle is null");
+        return;
     }
     
-    for (; i < count; i++) {
-        int p = pixels[i];
-        int a = (p >> 24) & 0xFF;
-        int r = (p >> 16) & 0xFF;
-        int g = (p >> 8) & 0xFF;
-        int b = p & 0xFF;
-        int gray = (r * 77 + g * 150 + b * 29) >> 8;
-        pixels[i] = (a << 24) | (gray << 16) | (gray << 8) | gray;
+    FastImage* img = (FastImage*)handle;
+    int w = img->width;
+    int h = img->height;
+    int* pixels = img->pixels;
+    int size = w * h;
+    
+    if (g_cpu.avx2) {
+        // AVX2 Path (32 bytes / 8 pixels at a time)
+        __m256i v_r_w = _mm256_set1_epi32(77);  // 0.299 * 256
+        __m256i v_g_w = _mm256_set1_epi32(150); // 0.587 * 256
+        __m256i v_b_w = _mm256_set1_epi32(29);  // 0.114 * 256
+        
+        for (int i = 0; i <= size - 8; i += 8) {
+            __m256i p = _mm256_loadu_si256((__m256i*)&pixels[i]);
+            __m256i r = _mm256_and_si256(_mm256_srli_epi32(p, 16), _mm256_set1_epi32(0xFF));
+            __m256i g = _mm256_and_si256(_mm256_srli_epi32(p, 8), _mm256_set1_epi32(0xFF));
+            __m256i b = _mm256_and_si256(p, _mm256_set1_epi32(0xFF));
+            
+            __m256i gray = _mm256_srli_epi32(_mm256_add_epi32(_mm256_add_epi32(
+                _mm256_mullo_epi32(r, v_r_w), _mm256_mullo_epi32(g, v_g_w)), 
+                _mm256_mullo_epi32(b, v_b_w)), 8);
+            
+            __m256i res = _mm256_or_si256(_mm256_and_si256(p, _mm256_set1_epi32(0xFF000000)),
+                          _mm256_or_si256(_mm256_slli_epi32(gray, 16),
+                          _mm256_or_si256(_mm256_slli_epi32(gray, 8), gray)));
+            _mm256_storeu_si256((__m256i*)&pixels[i], res);
+        }
+    } else {
+        // SSE4.1 Fallback
+        __m128i v_r_w = _mm_set1_epi32(77);
+        __m128i v_g_w = _mm_set1_epi32(150);
+        __m128i v_b_w = _mm_set1_epi32(29);
+        
+        for (int i = 0; i <= size - 4; i += 4) {
+            __m128i p = _mm_loadu_si128((__m128i*)&pixels[i]);
+            __m128i r = _mm_and_si128(_mm_srli_epi32(p, 16), _mm_set1_epi32(0xFF));
+            __m128i g = _mm_and_si128(_mm_srli_epi32(p, 8), _mm_set1_epi32(0xFF));
+            __m128i b = _mm_and_si128(p, _mm_set1_epi32(0xFF));
+            
+            __m128i gray = _mm_srli_epi32(_mm_add_epi32(_mm_add_epi32(
+                _mm_mullo_epi32(r, v_r_w), _mm_mullo_epi32(g, v_g_w)), 
+                _mm_mullo_epi32(b, v_b_w)), 8);
+                
+            __m128i res = _mm_or_si128(_mm_and_si128(p, _mm_set1_epi32(0xFF000000)),
+                          _mm_or_si128(_mm_slli_epi32(gray, 16),
+                          _mm_or_si128(_mm_slli_epi32(gray, 8), gray)));
+            _mm_storeu_si128((__m128i*)&pixels[i], res);
+        }
     }
 }
 
@@ -451,7 +482,7 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurGaussian(
     }
 }
 
-// Stack blur - CSS backdrop-filter style, fast with good quality
+/// Proper Stack Blur (Separable, Weighted O(N))
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurStack(
     JNIEnv*, jclass, jlong handle, jfloat radius) {
     
@@ -461,84 +492,131 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurStack(
     int* pixels = img->pixels;
     
     int r = (int)(radius + 0.5f);
-    if (r < 1) r = 1;
-    if (r > 100) r = 100;
+    if (r < 1) return;
+    if (r > 254) r = 254; // Limit for fixed-point safety
     
+    int div = (r + 1) * (r + 1);
     int* temp = alignedAlloc(w * h);
-    memcpy(temp, pixels, w * h * sizeof(int));
     
-    int div = r + r + 1;
-    int* rBuffer = new int[w];
-    int* gBuffer = new int[w];
-    int* bBuffer = new int[w];
-    int* aBuffer = new int[w];
+    // Stack blur logic: we maintain a "stack" sum where the center has weight r+1
+    // and weights decrease linearly to 1 at the edges.
     
     // Horizontal pass
     for (int y = 0; y < h; y++) {
-        int rsum = 0, gsum = 0, bsum = 0, asum = 0;
+        int* srcRow = pixels + y * w;
+        int* dstRow = temp + y * w;
         
-        for (int i = -r; i <= r; i++) {
-            int x = std::max(0, std::min(i, w - 1));
-            int p = temp[y * w + x];
-            asum += (p >> 24) & 0xFF;
-            rsum += (p >> 16) & 0xFF;
-            gsum += (p >> 8) & 0xFF;
-            bsum += p & 0xFF;
+        int rsum = 0, gsum = 0, bsum = 0, asum = 0;
+        int rin = 0, gin = 0, bin = 0, ain = 0;
+        int rout = 0, gout = 0, bout = 0, aout = 0;
+        
+        // Initial window
+        for (int i = -r; i <= 0; i++) {
+            int p = srcRow[0];
+            int weight = i + r + 1;
+            asum += ((p >> 24) & 0xFF) * weight;
+            rsum += ((p >> 16) & 0xFF) * weight;
+            gsum += ((p >> 8) & 0xFF) * weight;
+            bsum += (p & 0xFF) * weight;
+            ain += ((p >> 24) & 0xFF);
+            rin += ((p >> 16) & 0xFF);
+            gin += ((p >> 8) & 0xFF);
+            bin += (p & 0xFF);
+        }
+        for (int i = 1; i <= r; i++) {
+            int p = srcRow[std::min(i, w - 1)];
+            int weight = r + 1 - i;
+            asum += ((p >> 24) & 0xFF) * weight;
+            rsum += ((p >> 16) & 0xFF) * weight;
+            gsum += ((p >> 8) & 0xFF) * weight;
+            bsum += (p & 0xFF) * weight;
+            aout += ((p >> 24) & 0xFF);
+            rout += ((p >> 16) & 0xFF);
+            gout += ((p >> 8) & 0xFF);
+            bout += (p & 0xFF);
         }
         
         for (int x = 0; x < w; x++) {
-            int p = temp[y * w + x];
-            pixels[y * w + x] = ((asum / div) << 24) | 
-                               ((rsum / div) << 16) | 
-                               ((gsum / div) << 8) | 
-                               (bsum / div);
+            dstRow[x] = ((asum / div) << 24) | ((rsum / div) << 16) | 
+                         ((gsum / div) << 8) | (bsum / div);
             
-            // Slide window
-            int pOut = (x - r > 0) ? temp[y * w + (x - r - 1)] : temp[y * w];
-            int pIn = (x + r + 1 < w) ? temp[y * w + (x + r + 1)] : temp[y * w + (w - 1)];
+            asum -= ain; rsum -= rin; gsum -= gin; bsum -= bin;
             
-            asum -= ((pOut >> 24) & 0xFF) - ((pIn >> 24) & 0xFF);
-            rsum -= ((pOut >> 16) & 0xFF) - ((pIn >> 16) & 0xFF);
-            gsum -= ((pOut >> 8) & 0xFF) - ((pIn >> 8) & 0xFF);
-            bsum -= (pOut & 0xFF) - (pIn & 0xFF);
+            int pOut = srcRow[std::max(0, x - r)];
+            ain -= (pOut >> 24) & 0xFF; rin -= (pOut >> 16) & 0xFF;
+            gin -= (pOut >> 8) & 0xFF; bin -= pOut & 0xFF;
+            
+            int pCenter = srcRow[std::min(x + 1, w - 1)];
+            aout += (pCenter >> 24) & 0xFF; rout += (pCenter >> 16) & 0xFF;
+            gout += (pCenter >> 8) & 0xFF; bout += pCenter & 0xFF;
+            
+            ain += (pCenter >> 24) & 0xFF; rin += (pCenter >> 16) & 0xFF;
+            gin += (pCenter >> 8) & 0xFF; bin += pCenter & 0xFF;
+            
+            int pIn = srcRow[std::min(x + r + 1, w - 1)];
+            aout -= (pIn >> 24) & 0xFF; rout -= (pIn >> 16) & 0xFF;
+            gout -= (pIn >> 8) & 0xFF; bout -= pIn & 0xFF;
+            
+            asum += aout; rsum += rout; gsum += gout; bsum += bout;
         }
     }
-    
-    memcpy(temp, pixels, w * h * sizeof(int));
     
     // Vertical pass
     for (int x = 0; x < w; x++) {
         int rsum = 0, gsum = 0, bsum = 0, asum = 0;
+        int rin = 0, gin = 0, bin = 0, ain = 0;
+        int rout = 0, gout = 0, bout = 0, aout = 0;
         
-        for (int i = -r; i <= r; i++) {
-            int y = std::max(0, std::min(i, h - 1));
-            int p = temp[y * w + x];
-            asum += (p >> 24) & 0xFF;
-            rsum += (p >> 16) & 0xFF;
-            gsum += (p >> 8) & 0xFF;
-            bsum += p & 0xFF;
+        for (int i = -r; i <= 0; i++) {
+            int p = temp[0 * w + x];
+            int weight = i + r + 1;
+            asum += ((p >> 24) & 0xFF) * weight;
+            rsum += ((p >> 16) & 0xFF) * weight;
+            gsum += ((p >> 8) & 0xFF) * weight;
+            bsum += (p & 0xFF) * weight;
+            ain += ((p >> 24) & 0xFF);
+            rin += ((p >> 16) & 0xFF);
+            gin += ((p >> 8) & 0xFF);
+            bin += (p & 0xFF);
+        }
+        for (int i = 1; i <= r; i++) {
+            int p = temp[std::min(i, h - 1) * w + x];
+            int weight = r + 1 - i;
+            asum += ((p >> 24) & 0xFF) * weight;
+            rsum += ((p >> 16) & 0xFF) * weight;
+            gsum += ((p >> 8) & 0xFF) * weight;
+            bsum += (p & 0xFF) * weight;
+            aout += ((p >> 24) & 0xFF);
+            rout += ((p >> 16) & 0xFF);
+            gout += ((p >> 8) & 0xFF);
+            bout += (p & 0xFF);
         }
         
         for (int y = 0; y < h; y++) {
-            pixels[y * w + x] = ((asum / div) << 24) | 
-                               ((rsum / div) << 16) | 
-                               ((gsum / div) << 8) | 
-                               (bsum / div);
+            pixels[y * w + x] = ((asum / div) << 24) | ((rsum / div) << 16) | 
+                                 ((gsum / div) << 8) | (bsum / div);
             
-            int pOut = (y - r > 0) ? temp[(y - r - 1) * w + x] : temp[x];
-            int pIn = (y + r + 1 < h) ? temp[(y + r + 1) * w + x] : temp[(h - 1) * w + x];
+            asum -= ain; rsum -= rin; gsum -= gin; bsum -= bin;
             
-            asum -= ((pOut >> 24) & 0xFF) - ((pIn >> 24) & 0xFF);
-            rsum -= ((pOut >> 16) & 0xFF) - ((pIn >> 16) & 0xFF);
-            gsum -= ((pOut >> 8) & 0xFF) - ((pIn >> 8) & 0xFF);
-            bsum -= (pOut & 0xFF) - (pIn & 0xFF);
+            int pOut = temp[std::max(0, y - r) * w + x];
+            ain -= (pOut >> 24) & 0xFF; rin -= (pOut >> 16) & 0xFF;
+            gin -= (pOut >> 8) & 0xFF; bin -= pOut & 0xFF;
+            
+            int pCenter = temp[std::min(y + 1, h - 1) * w + x];
+            aout += (pCenter >> 24) & 0xFF; rout += (pCenter >> 16) & 0xFF;
+            gout += (pCenter >> 8) & 0xFF; bout += pCenter & 0xFF;
+            
+            ain += (pCenter >> 24) & 0xFF; rin += (pCenter >> 16) & 0xFF;
+            gin += (pCenter >> 8) & 0xFF; bin += pCenter & 0xFF;
+            
+            int pIn = temp[std::min(y + r + 1, h - 1) * w + x];
+            aout -= (pIn >> 24) & 0xFF; rout -= (pIn >> 16) & 0xFF;
+            gout -= (pIn >> 8) & 0xFF; bout -= pIn & 0xFF;
+            
+            asum += aout; rsum += rout; gsum += gout; bsum += bout;
         }
     }
     
-    delete[] rBuffer;
-    delete[] gBuffer;
-    delete[] bBuffer;
-    delete[] aBuffer;
     alignedFree(temp);
 }
 

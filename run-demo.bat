@@ -20,11 +20,26 @@ echo  [Q] Quit
 echo.
 set /p choice="Select a demo to run [1-5, Q]: "
 
-if /i "%choice%"=="1" set "DEMO_DIR=VisualEditor" & set "MAIN=fastimage.VisualEditor"
-if /i "%choice%"=="2" set "DEMO_DIR=BlurGallery"   & set "MAIN=fastimage.BlurGallery"
-if /i "%choice%"=="3" set "DEMO_DIR=ResizeDemo"    & set "MAIN=fastimage.ResizeDemo"
-if /i "%choice%"=="4" set "DEMO_DIR=Benchmark"     & set "MAIN=fastimage.FastImageBenchmark"
-if /i "%choice%"=="5" set "DEMO_DIR=BasicUsage"    & set "MAIN=fastimage.BasicUsage"
+if /i "%choice%"=="1" (
+    set "DEMO_DIR=VisualEditor"
+    set "MAIN=fastimage.VisualEditor"
+)
+if /i "%choice%"=="2" (
+    set "DEMO_DIR=BlurGallery"
+    set "MAIN=fastimage.BlurGallery"
+)
+if /i "%choice%"=="3" (
+    set "DEMO_DIR=ResizeDemo"
+    set "MAIN=fastimage.ResizeDemo"
+)
+if /i "%choice%"=="4" (
+    set "DEMO_DIR=Benchmark"
+    set "MAIN=fastimage.FastImageBenchmark"
+)
+if /i "%choice%"=="5" (
+    set "DEMO_DIR=BasicUsage"
+    set "MAIN=fastimage.BasicUsage"
+)
 if /i "%choice%"=="Q" exit /b
 
 if not defined DEMO_DIR goto menu

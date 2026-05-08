@@ -83,7 +83,7 @@ public class FastImage {
      */
     public static FastImage fromNativeHandle(long handle, int width, int height) {
         if (handle == 0)
-            return null;
+            throw new FastImageException("Native handle is null (0)");
         FastImage img = new FastImage();
         img.width = width;
         img.height = height;
@@ -102,27 +102,29 @@ public class FastImage {
      * @param newWidth  target width
      * @param newHeight target height
      */
-    public void resize(int newWidth, int newHeight) {
+    public FastImage resize(int newWidth, int newHeight) {
         checkDisposed();
+        if (newWidth <= 0 || newHeight <= 0) {
+            throw new FastImageException("Invalid dimensions: " + newWidth + "x" + newHeight);
+        }
         nativeResize(nativeHandle, newWidth, newHeight);
         this.width = newWidth;
         this.height = newHeight;
+        return this;
     }
 
-    /**
-     * Apply gaussian blur
-     * 
-     * @param radius blur radius in pixels (0.5 - 50.0)
-     */
     /**
      * Fast box blur - quickest approximation.
      * Good for real-time effects where speed matters.
      * 
      * @param radius blur radius (0-50)
      */
-    public void blurBox(float radius) {
+    public FastImage blurBox(float radius) {
         checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (radius == 0) return this;
         nativeBlurBox(nativeHandle, radius);
+        return this;
     }
 
     /**
@@ -131,9 +133,12 @@ public class FastImage {
      * 
      * @param radius blur radius (0-50)
      */
-    public void blurGaussian(float radius) {
+    public FastImage blurGaussian(float radius) {
         checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (radius == 0) return this;
         nativeBlurGaussian(nativeHandle, radius);
+        return this;
     }
 
     /**
@@ -142,9 +147,12 @@ public class FastImage {
      * 
      * @param radius blur radius (0-100)
      */
-    public void blurStack(float radius) {
+    public FastImage blurStack(float radius) {
         checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (radius == 0) return this;
         nativeBlurStack(nativeHandle, radius);
+        return this;
     }
 
     /**
@@ -154,9 +162,12 @@ public class FastImage {
      * @param radius blur radius (0-50)
      * @param passes number of passes (1-5, higher = softer)
      */
-    public void blurKawase(float radius, int passes) {
+    public FastImage blurKawase(float radius, int passes) {
         checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (passes < 1 || passes > 10) throw new FastImageException("Invalid passes: " + passes);
         nativeBlurKawase(nativeHandle, radius, passes);
+        return this;
     }
 
     /**
@@ -165,9 +176,11 @@ public class FastImage {
      * 
      * @param radius blur radius (0-50)
      */
-    public void blurDualKawase(float radius) {
+    public FastImage blurDualKawase(float radius) {
         checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
         nativeBlurDualKawase(nativeHandle, radius);
+        return this;
     }
 
     /**
@@ -176,17 +189,20 @@ public class FastImage {
      * 
      * @param radius blur radius (0-200)
      */
-    public void blurMipmapped(float radius) {
+    public FastImage blurMipmapped(float radius) {
         checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
         nativeBlurMipmapped(nativeHandle, radius);
+        return this;
     }
 
     /**
      * Convert to grayscale
      */
-    public void grayscale() {
+    public FastImage grayscale() {
         checkDisposed();
         nativeGrayscale(nativeHandle);
+        return this;
     }
 
     /**
@@ -194,9 +210,11 @@ public class FastImage {
      * 
      * @param factor 0.0 = black, 1.0 = unchanged, 2.0 = double brightness
      */
-    public void adjustBrightness(float factor) {
+    public FastImage adjustBrightness(float factor) {
         checkDisposed();
+        if (factor < 0) throw new FastImageException("Factor cannot be negative: " + factor);
         nativeBrightness(nativeHandle, factor);
+        return this;
     }
 
     /**
@@ -204,25 +222,29 @@ public class FastImage {
      * 
      * @param factor 0.0 = gray, 1.0 = unchanged, 2.0 = double contrast
      */
-    public void adjustContrast(float factor) {
+    public FastImage adjustContrast(float factor) {
         checkDisposed();
+        if (factor < 0) throw new FastImageException("Factor cannot be negative: " + factor);
         nativeContrast(nativeHandle, factor);
+        return this;
     }
 
     /**
      * Flip image horizontally
      */
-    public void flipHorizontal() {
+    public FastImage flipHorizontal() {
         checkDisposed();
         nativeFlipH(nativeHandle);
+        return this;
     }
 
     /**
      * Flip image vertically
      */
-    public void flipVertical() {
+    public FastImage flipVertical() {
         checkDisposed();
         nativeFlipV(nativeHandle);
+        return this;
     }
 
     /**
