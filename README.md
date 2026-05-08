@@ -1,178 +1,75 @@
-# FastImage — High-performance image processing for Java [ALPHA]
+# FastImage — Ultra-Fast Native Image Processing for Java [v0.1.0]
 
-> **SIMD-accelerated, off-heap image processing — 10-50× faster than BufferedImage**
-> 
-> Native speed for Java: Resize, blur, grayscale, brightness with zero GC pressure
->
-> 🚧 **ALPHA — Daily Active Development — Infrastructure in Progress** 🚧
+**A high-performance image processing library for the FastJava ecosystem. Replaces BufferedImage with SIMD-accelerated native filters.**
 
+[![Status](https://img.shields.io/badge/status-v0.1.0--alpha-orange.svg)]()
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
-[![Maven](https://img.shields.io/badge/Maven-3.9+-orange.svg)](https://maven.apache.org)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010+-lightgrey.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![JitPack](https://img.shields.io/badge/JitPack-ready-green.svg)](https://jitpack.io)
 
 ---
 
-## 🚀 Quick Start
+**FastImage** is built for real-time visual effects. By using native SIMD instructions (AVX2/SSE), it delivers blurs and filters dramatically faster than standard Java `BufferedImageOp`. It stores pixel data in off-heap memory, reducing GC pressure and enabling zero-copy integration with other FastJava modules.
+
+## Table of Contents
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [API Highlights](#api-highlights)
+- [License](#license)
+
+## Features
+- **🖼️ SIMD Accelerated**: Native Box, Gaussian, Stack, and Kawase Blurs using AVX2/SSE.
+- **⚡ Real-Time Smooth**: 10-50x faster than standard Java image processing.
+- **📦 Zero-Copy Ready**: Direct memory access via `fromNativeHandle` for integration with modules like `FastThumb`.
+- **🚀 Off-Heap Memory**: Pixel data is stored outside the JVM heap, avoiding GC pauses.
+
+## Quick Start
 
 ```java
-import fastimage.FastImage;
-
-// Chain operations fluently - all SIMD accelerated
-FastImage img = FastImage.fromBufferedImage(source)
-    .resize(1920, 1080)
-    .blur(5.0f)
-    .grayscale()
-    .adjustBrightness(1.2f);
-
+FastImage img = FastImage.fromBufferedImage(myImage);
+img.blurGaussian(10.0f);
+img.adjustBrightness(1.2f);
 BufferedImage result = img.toBufferedImage();
-img.dispose();  // Free native memory
+img.dispose();
 ```
 
-> **Design Philosophy:** Stream-API Pattern + Mutable State for Performance + Image Processing Pipeline Mentality. Unlike Java Streams (immutable) or BufferedImageOps (copy-heavy), FastImage uses in-place operations on native off-heap memory. This allows zero-copy chaining: `resize().blur().grayscale()` all work on the same buffer. The fluent API was dictated by the requirements: native SIMD speed requires eliminating intermediate copies.
-
----
-
-## 📦 Installation
+## Installation
 
 ### Maven (JitPack)
-
 ```xml
-<repositories>
-    <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
-    </repository>
-</repositories>
-
-<dependency>
-    <groupId>com.github.andrestubbe</groupId>
-    <artifactId>fastimage</artifactId>
-    <version>v1.0.0</version>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>com.github.andrestubbe</groupId>
+        <artifactId>fastimage</artifactId>
+        <version>0.1.0</version>
+    </dependency>
+    <dependency>
+        <groupId>com.github.andrestubbe</groupId>
+        <artifactId>fastcore</artifactId>
+        <version>0.1.0</version>
+    </dependency>
+</dependencies>
 ```
 
-### Gradle
+## API Highlights
 
-```groovy
-repositories { maven { url 'https://jitpack.io' } }
-dependencies { implementation 'com.github.andrestubbe:fastimage:v1.0.0' }
-```
+### Creation & Disposal
+- `FastImage.fromBufferedImage(BufferedImage)`: Create from standard Java image.
+- `FastImage.create(int width, int height)`: Create empty off-heap image.
+- `FastImage.fromNativeHandle(long handle, int w, int h)`: **(Zero-Copy)** Wrap existing native image pointer.
+- `dispose()`: Manually free off-heap memory.
 
-### Direct Download
-
-Download JAR from [Releases](https://github.com/andrestubbe/FastImage/releases)
-
-**Required:** FastCore is automatically included via Maven. For direct download, get both:
-- `fastimage-1.0.0.jar` — Main library
-- `fastcore-1.0.0.jar` — [JNI loader](https://github.com/andrestubbe/FastCore/releases)
-
----
-
-## Project Structure
-
-```
-fastimage/
-├── .github/workflows/          # CI/CD
-├── examples/00-basic-usage/     # Usage demo + benchmark
-│   ├── pom.xml
-│   └── src/main/java/fastimage/
-├── native/
-│   ├── FastImage.cpp          # SIMD native implementation
-│   ├── FastImage.h              # Header file
-│   └── FastImage.def            # JNI exports
-├── src/main/java/fastimage/     # Java API
-│   └── FastImage.java
-├── compile.bat                 # Native build script
-├── pom.xml                     # Maven config
-└── README.md                   # This file
-```
-
-**Optional folders** (add when needed):
-- `src/test/java/` - JUnit tests (Maven recognizes automatically)
-
-**Why `examples/` on root level?**
-- Not part of the library → separate mini-projects
-- Not tests → tutorials for users
-- Each example has its own `pom.xml` → runnable standalone
-- Copy-paste friendly → users can use as starter template
-
----
-
-## ⚡ Performance Benchmarks
-
-| Operation | BufferedImage | FastImage | Speedup | Memory |
-|-----------|--------------|-----------|---------|--------|
-| **Blur 4K** | 850ms | 45ms | **19×** | 6.7× less |
-| **Resize 4K→1080p** | 600ms | 35ms | **17×** | Off-heap |
-| **Grayscale** | 120ms | 8ms | **15×** | No GC pressure |
-| **Brightness** | 95ms | 6ms | **16×** | Direct access |
-| **Full Pipeline** | 2.5s | 120ms | **21×** | Zero-copy |
-
-*Hardware: i7-12700H, Windows 11, Java 17. Measured with included benchmark.*
-
-### Supported Operations
-
-- **Geometry:** resize, rotate, flip, crop
-- **Filters:** blur (gaussian), sharpen, edge detection
-- **Color:** brightness, contrast, saturation, grayscale
-- **Effects:** vignette, sepia, threshold
-- **I/O:** PNG/JPEG load/save (parallel encoding)
-
-## Build from Source
-
-See [COMPILE.md](COMPILE.md) for detailed build instructions.
-
----
-
-## 🧠 Why FastImage?
-
-**BufferedImage Problems:**
-- ❌ JVM heap storage → GC pauses with large images
-- ❌ No SIMD → pixel-by-pixel Java loops
-- ❌ `getRGB()`/`setRGB()` → bounds checks, slow
-
-**FastImage Solutions:**
-- ✅ **Off-heap** — ByteBuffer outside JVM heap, no GC
-- ✅ **SIMD** — SSE2/AVX native operations
-- ✅ **Zero-copy** — Crop without copying pixels
-- ✅ **Fluent API** — Chain operations efficiently
-
-## 🗺 Part of FastJava Ecosystem
-
-| Module | Purpose | Link |
-|--------|---------|------|
-| **FastCore** | JNI loader | ⚠️ Alpha |
-| **FastGraphics** | GPU rendering | ⚠️ Alpha |
-| **FastRobot** | Screen capture | ⚠️ Alpha |
-| **FastMath** | SIMD math | ⚠️ Alpha |
-| **FastImage** | SIMD image processing | ⚠️ Alpha |
-| **FastClipboard** | Native clipboard | ⚠️ Alpha |
-| **FastHotkey** | Global hotkeys | ⚠️ Alpha |
-| **FastTheme** | Theme detection | ⚠️ Alpha |
-
-## 📚 Examples
-
-Every feature has a standalone example in `examples/`:
-
-```bash
-cd examples/00-basic-usage
-mvn compile exec:java    # Run benchmark
-```
-
-| Example | Demonstrates |
-|---------|-------------|
-| `00-basic-usage` | Benchmark + chain API |
-| `01-resize` | Resize algorithms (coming) |
-| `02-blur` | Blur with slider (coming) |
-| `03-visual-effects` | Split-screen demo (coming) |
+### Operations (SIMD)
+- `blurGaussian(float radius)` / `blurStack(float radius)` / `blurKawase(float radius, int passes)`
+- `resize(int w, int h)` / `crop(x, y, w, h)`
+- `grayscale()` / `adjustBrightness(float)` / `adjustContrast(float)`
+- `flipHorizontal()` / `flipVertical()`
 
 ---
 
 ## License
-
 MIT License — See [LICENSE](LICENSE) for details.
 
 ---
-
 **Part of the FastJava Ecosystem** — *Making the JVM faster.*
