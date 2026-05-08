@@ -77,7 +77,7 @@ echo.
 echo Compiling %LIB_NAME%.dll...
 echo ========================================
 
-cl.exe /O2 /W3 /MD /EHsc ^
+cl.exe /O2 /W3 /MD /EHsc /arch:AVX2 ^
     /I "%JAVA_HOME%\include" ^
     /I "%JAVA_HOME%\include\win32" ^
     /Fo:build\ ^
@@ -96,4 +96,4 @@ if %ERRORLEVEL% == 0 (
 )
 
 echo.
-pause
+

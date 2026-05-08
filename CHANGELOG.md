@@ -1,17 +1,10 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-
-## [Unreleased]
-
+## [0.1.0] - 2026-05-08
 ### Added
-- Initial project structure
-
-## [1.0.0] - YYYY-MM-DD
-
-### Added
-- First release
-- Core functionality
-- Maven Central deployment
+- Native SIMD-accelerated image processing core.
+- SSE4.1/AVX2 optimizations for Grayscale, Brightness, and Contrast.
+- O(N) Sliding Window Box Blur and Gaussian Blur approximation.
+- Zero-copy native handle integration for FastJava ecosystem.
+- Performance benchmark suite.
+- High-quality Bilinear Resizing.

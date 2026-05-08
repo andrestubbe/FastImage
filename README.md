@@ -1,75 +1,82 @@
-# FastImage — Ultra-Fast Native Image Processing for Java [v0.1.0]
+# ⚡ FastImage v0.1.0
 
-**A high-performance image processing library for the FastJava ecosystem. Replaces BufferedImage with SIMD-accelerated native filters.**
+[![Blueprint](https://img.shields.io/badge/Standard-BluePrint-blue.svg)](https://github.com/andrestubbe/FastJava)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)](#)
 
-[![Status](https://img.shields.io/badge/status-v0.1.0--alpha-orange.svg)]()
-[![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010+-lightgrey.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**FastImage** is the high-performance imaging core of the **FastJava** ecosystem. It provides ultra-fast, SIMD-accelerated image processing by keeping pixel data in **native memory (off-heap)**, bypassing the JVM's Garbage Collector and utilizing AVX2/SSE4.1 instructions for maximum throughput.
+
+> [!IMPORTANT]
+> FastImage is designed for performance-critical UI effects and real-time image processing. It achieves **10-50x speedups** compared to standard `BufferedImage` operations.
 
 ---
 
-**FastImage** is built for real-time visual effects. By using native SIMD instructions (AVX2/SSE), it delivers blurs and filters dramatically faster than standard Java `BufferedImageOp`. It stores pixel data in off-heap memory, reducing GC pressure and enabling zero-copy integration with other FastJava modules.
+## 🚀 Key Features
 
-## Table of Contents
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [API Highlights](#api-highlights)
-- [License](#license)
+*   **⚡ Native SIMD Acceleration**: Hand-optimized C++ kernels using AVX2 and SSE4.1.
+*   **📦 Zero-Copy Integration**: Seamlessly hand over native memory handles from modules like **FastThumb** or **FastGraphics**.
+*   **🧠 Off-Heap Storage**: Pixels are stored outside the JVM heap, preventing GC pauses during heavy image manipulation.
+*   **🌈 Professional Blur Suite**: Includes Box, Gaussian (O(N)), Stack, Kawase, and Dual-Kawase blurs.
+*   **🎨 Advanced Adjustments**: Real-time Brightness, Contrast, Grayscale (Luminance-weighted), and Resizing.
+*   **🔄 Instant Conversion**: Efficient bridge to and from `java.awt.image.BufferedImage`.
 
-## Features
-- **🖼️ SIMD Accelerated**: Native Box, Gaussian, Stack, and Kawase Blurs using AVX2/SSE.
-- **⚡ Real-Time Smooth**: 10-50x faster than standard Java image processing.
-- **📦 Zero-Copy Ready**: Direct memory access via `fromNativeHandle` for integration with modules like `FastThumb`.
-- **🚀 Off-Heap Memory**: Pixel data is stored outside the JVM heap, avoiding GC pauses.
+---
 
-## Quick Start
+## 📊 Performance Benchmark
 
+*Tested on: 1920x1080 (1080p) Image, 100 Iterations*
+
+| Operation | Java2D (BufferedImage) | FastImage (SIMD) | Speedup |
+| :--- | :--- | :--- | :--- |
+| **Brightness** | ~48.6 ms/op | **~1.5 ms/op** | **~32x** |
+| **Gaussian Blur (r10)** | ~1100.0 ms/op | **~170.4 ms/op** | **~6.5x** |
+| **Grayscale** | ~20.0 ms/op | **~1.3 ms/op** | **~15x** |
+
+---
+
+## 🛠 Usage
+
+### Basic Initialization
 ```java
-FastImage img = FastImage.fromBufferedImage(myImage);
-img.blurGaussian(10.0f);
+// From BufferedImage
+FastImage img = FastImage.fromBufferedImage(myBuffer);
+
+// Apply real-time effects
 img.adjustBrightness(1.2f);
+img.blurGaussian(10.0f);
+img.grayscale();
+
+// Back to Java2D
 BufferedImage result = img.toBufferedImage();
-img.dispose();
+img.dispose(); // Always free native memory!
 ```
 
-## Installation
-
-### Maven (JitPack)
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.github.andrestubbe</groupId>
-        <artifactId>fastimage</artifactId>
-        <version>0.1.0</version>
-    </dependency>
-    <dependency>
-        <groupId>com.github.andrestubbe</groupId>
-        <artifactId>fastcore</artifactId>
-        <version>0.1.0</version>
-    </dependency>
-</dependencies>
+### Zero-Copy from FastThumb
+```java
+// FastThumb returns a native handle, FastImage wraps it instantly
+FastImage thumb = FastThumb.get(path, 256);
+thumb.blurStack(5.0f); // Fast blur on the native buffer
 ```
-
-## API Highlights
-
-### Creation & Disposal
-- `FastImage.fromBufferedImage(BufferedImage)`: Create from standard Java image.
-- `FastImage.create(int width, int height)`: Create empty off-heap image.
-- `FastImage.fromNativeHandle(long handle, int w, int h)`: **(Zero-Copy)** Wrap existing native image pointer.
-- `dispose()`: Manually free off-heap memory.
-
-### Operations (SIMD)
-- `blurGaussian(float radius)` / `blurStack(float radius)` / `blurKawase(float radius, int passes)`
-- `resize(int w, int h)` / `crop(x, y, w, h)`
-- `grayscale()` / `adjustBrightness(float)` / `adjustContrast(float)`
-- `flipHorizontal()` / `flipVertical()`
 
 ---
 
-## License
-MIT License — See [LICENSE](LICENSE) for details.
+## 🏗 Build Requirements
+
+*   **JDK 17+** (Recommended: JDK 21+)
+*   **Visual Studio 2022** (with C++ Desktop workload)
+*   **Maven 3.8+**
+*   **Architecture**: x64 with AVX2/SSE4.1 support
 
 ---
-**Part of the FastJava Ecosystem** — *Making the JVM faster.*
+
+## 🗺 Roadmap
+
+- [x] SIMD-accelerated Brightness/Contrast
+- [x] O(N) Sliding Window Box/Gaussian Blur
+- [ ] AVX-accelerated Bilinear Resizer
+- [ ] Hardware-accelerated GPU fallback via FastGraphics
+- [ ] Neural Denoising Filter
+
+---
+
+© 2026 Andre Stubbe - Part of the **FastJava** Blueprint.

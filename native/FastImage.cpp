@@ -81,6 +81,10 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeDispose(
 
 // === SIMD Operations ===
 
+#include <immintrin.h> // AVX/SSE
+
+// === SIMD Operations ===
+
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeGrayscale(
     JNIEnv*, jclass, jlong handle) {
     
@@ -88,44 +92,46 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeGrayscale(
     int count = img->width * img->height;
     int* pixels = img->pixels;
     
-    // SSE2 optimized grayscale
+    // Constant weights for luminance (approximate for fixed point)
+    // Gray = (R*77 + G*150 + B*29) >> 8
+    __m128i rw = _mm_set1_epi32(77);
+    __m128i gw = _mm_set1_epi32(150);
+    __m128i bw = _mm_set1_epi32(29);
+    __m128i mask = _mm_set1_epi32(0xFF);
+    
     int i = 0;
     for (; i <= count - 4; i += 4) {
         __m128i argb = _mm_loadu_si128((__m128i*)(pixels + i));
         
-        // Extract channels (ARGB → process RGB, keep A)
-        // Simplified: use average of RGB for speed
-        __m128i r = _mm_and_si128(_mm_srli_epi32(argb, 16), _mm_set1_epi32(0xFF));
-        __m128i g = _mm_and_si128(_mm_srli_epi32(argb, 8), _mm_set1_epi32(0xFF));
-        __m128i b = _mm_and_si128(argb, _mm_set1_epi32(0xFF));
-        __m128i a = _mm_and_si128(_mm_srli_epi32(argb, 24), _mm_set1_epi32(0xFF));
+        __m128i r = _mm_and_si128(_mm_srli_epi32(argb, 16), mask);
+        __m128i g = _mm_and_si128(_mm_srli_epi32(argb, 8), mask);
+        __m128i b = _mm_and_si128(argb, mask);
+        __m128i a = _mm_and_si128(_mm_srli_epi32(argb, 24), mask);
         
-        // Gray = (R + G + G + B) / 4  (fast approximation)
-        __m128i gray = _mm_srli_epi32(_mm_add_epi32(_mm_add_epi32(r, _mm_add_epi32(g, g)), b), 2);
+        // Luminance calculation: (r*77 + g*150 + b*29) >> 8
+        __m128i gray = _mm_srli_epi32(
+            _mm_add_epi32(
+                _mm_mullo_epi32(r, rw),
+                _mm_add_epi32(_mm_mullo_epi32(g, gw), _mm_mullo_epi32(b, bw))
+            ), 8);
         
-        // Reconstruct ARGB with gray
+        // Reconstruct ARGB
         __m128i result = _mm_or_si128(
             _mm_slli_epi32(a, 24),
-            _mm_or_si128(
-                _mm_slli_epi32(gray, 16),
-                _mm_or_si128(
-                    _mm_slli_epi32(gray, 8),
-                    gray
-                )
-            )
+            _mm_or_si128(_mm_slli_epi32(gray, 16), 
+                _mm_or_si128(_mm_slli_epi32(gray, 8), gray))
         );
         
         _mm_storeu_si128((__m128i*)(pixels + i), result);
     }
     
-    // Handle remaining pixels
     for (; i < count; i++) {
-        int pixel = pixels[i];
-        int a = (pixel >> 24) & 0xFF;
-        int r = (pixel >> 16) & 0xFF;
-        int g = (pixel >> 8) & 0xFF;
-        int b = pixel & 0xFF;
-        int gray = (r + g + g + b) >> 2;  // Fast approximation
+        int p = pixels[i];
+        int a = (p >> 24) & 0xFF;
+        int r = (p >> 16) & 0xFF;
+        int g = (p >> 8) & 0xFF;
+        int b = p & 0xFF;
+        int gray = (r * 77 + g * 150 + b * 29) >> 8;
         pixels[i] = (a << 24) | (gray << 16) | (gray << 8) | gray;
     }
 }
@@ -137,19 +143,42 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBrightness(
     int count = img->width * img->height;
     int* pixels = img->pixels;
     
-    int scale = (int)(factor * 256.0f);
+    __m128 vFactor = _mm_set1_ps(factor);
+    __m128i mask = _mm_set1_epi32(0xFF);
+    __m128 zero = _mm_setzero_ps();
+    __m128 maxVal = _mm_set1_ps(255.0f);
     
-    for (int i = 0; i < count; i++) {
-        int pixel = pixels[i];
-        int a = (pixel >> 24) & 0xFF;
-        int r = ((pixel >> 16) & 0xFF) * scale >> 8;
-        int g = ((pixel >> 8) & 0xFF) * scale >> 8;
-        int b = (pixel & 0xFF) * scale >> 8;
+    int i = 0;
+    for (; i <= count - 4; i += 4) {
+        __m128i argb = _mm_loadu_si128((__m128i*)(pixels + i));
         
-        r = r > 255 ? 255 : r;
-        g = g > 255 ? 255 : g;
-        b = b > 255 ? 255 : b;
+        __m128 r = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(argb, 16), mask));
+        __m128 g = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(argb, 8), mask));
+        __m128 b = _mm_cvtepi32_ps(_mm_and_si128(argb, mask));
+        __m128i a = _mm_and_si128(_mm_srli_epi32(argb, 24), mask);
         
+        r = _mm_min_ps(_mm_mul_ps(r, vFactor), maxVal);
+        g = _mm_min_ps(_mm_mul_ps(g, vFactor), maxVal);
+        b = _mm_min_ps(_mm_mul_ps(b, vFactor), maxVal);
+        
+        __m128i ri = _mm_cvtps_epi32(r);
+        __m128i gi = _mm_cvtps_epi32(g);
+        __m128i bi = _mm_cvtps_epi32(b);
+        
+        __m128i result = _mm_or_si128(_mm_slli_epi32(a, 24),
+            _mm_or_si128(_mm_slli_epi32(ri, 16),
+                _mm_or_si128(_mm_slli_epi32(gi, 8), bi)));
+        
+        _mm_storeu_si128((__m128i*)(pixels + i), result);
+    }
+    
+    for (; i < count; i++) {
+        int p = pixels[i];
+        int a = (p >> 24) & 0xFF;
+        int r = (int)(((p >> 16) & 0xFF) * factor);
+        int g = (int)(((p >> 8) & 0xFF) * factor);
+        int b = (int)((p & 0xFF) * factor);
+        r = r > 255 ? 255 : r; g = g > 255 ? 255 : g; b = b > 255 ? 255 : b;
         pixels[i] = (a << 24) | (r << 16) | (g << 8) | b;
     }
 }
@@ -161,25 +190,50 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeContrast(
     int count = img->width * img->height;
     int* pixels = img->pixels;
     
-    int scale = (int)(factor * 256.0f);
-    int offset = (int)(128.0f * (1.0f - factor) * 256.0f);
+    __m128 vFactor = _mm_set1_ps(factor);
+    __m128 v128 = _mm_set1_ps(128.0f);
+    __m128i mask = _mm_set1_epi32(0xFF);
+    __m128 maxVal = _mm_set1_ps(255.0f);
+    __m128 minVal = _mm_setzero_ps();
     
-    for (int i = 0; i < count; i++) {
-        int pixel = pixels[i];
-        int a = (pixel >> 24) & 0xFF;
-        int r = ((pixel >> 16) & 0xFF);
-        int g = ((pixel >> 8) & 0xFF);
-        int b = (pixel & 0xFF);
+    int i = 0;
+    for (; i <= count - 4; i += 4) {
+        __m128i argb = _mm_loadu_si128((__m128i*)(pixels + i));
         
-        r = ((r - 128) * scale >> 8) + 128;
-        g = ((g - 128) * scale >> 8) + 128;
-        b = ((b - 128) * scale >> 8) + 128;
+        __m128 r = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(argb, 16), mask));
+        __m128 g = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(argb, 8), mask));
+        __m128 b = _mm_cvtepi32_ps(_mm_and_si128(argb, mask));
+        __m128i a = _mm_and_si128(_mm_srli_epi32(argb, 24), mask);
         
+        r = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(r, v128), vFactor), v128);
+        g = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(g, v128), vFactor), v128);
+        b = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(b, v128), vFactor), v128);
+        
+        r = _mm_min_ps(_mm_max_ps(r, minVal), maxVal);
+        g = _mm_min_ps(_mm_max_ps(g, minVal), maxVal);
+        b = _mm_min_ps(_mm_max_ps(b, minVal), maxVal);
+        
+        __m128i ri = _mm_cvtps_epi32(r);
+        __m128i gi = _mm_cvtps_epi32(g);
+        __m128i bi = _mm_cvtps_epi32(b);
+        
+        __m128i result = _mm_or_si128(_mm_slli_epi32(a, 24),
+            _mm_or_si128(_mm_slli_epi32(ri, 16),
+                _mm_or_si128(_mm_slli_epi32(gi, 8), bi)));
+        
+        _mm_storeu_si128((__m128i*)(pixels + i), result);
+    }
+    
+    for (; i < count; i++) {
+        int p = pixels[i];
+        int a = (p >> 24) & 0xFF;
+        float r = (((p >> 16) & 0xFF) - 128) * factor + 128;
+        float g = (((p >> 8) & 0xFF) - 128) * factor + 128;
+        float b = ((p & 0xFF) - 128) * factor + 128;
         r = r < 0 ? 0 : (r > 255 ? 255 : r);
         g = g < 0 ? 0 : (g > 255 ? 255 : g);
         b = b < 0 ? 0 : (b > 255 ? 255 : b);
-        
-        pixels[i] = (a << 24) | (r << 16) | (g << 8) | b;
+        pixels[i] = (a << 24) | ((int)r << 16) | ((int)g << 8) | (int)b;
     }
 }
 
@@ -300,7 +354,7 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResize(
     src->height = newHeight;
 }
 
-// Simple box blur - fast approximation
+// Optimized Box Blur using sliding window (O(N))
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurBox(
     JNIEnv*, jclass, jlong handle, jfloat radius) {
     
@@ -310,154 +364,91 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurBox(
     int* pixels = img->pixels;
     
     int r = (int)(radius + 0.5f);
-    if (r < 1) r = 1;
-    if (r > 50) r = 50;  // Limit for performance
+    if (r < 1) return;
+    if (r > w / 2) r = w / 2 - 1;
+    if (r > h / 2) r = h / 2 - 1;
     
     int* temp = alignedAlloc(w * h);
-    memcpy(temp, pixels, w * h * sizeof(int));
     
     // Horizontal pass
     for (int y = 0; y < h; y++) {
+        int* srcRow = pixels + y * w;
+        int* dstRow = temp + y * w;
+        
+        long long sumA = 0, sumR = 0, sumG = 0, sumB = 0;
+        int div = 2 * r + 1;
+        
+        // Initialize window
+        for (int i = -r; i <= r; i++) {
+            int p = srcRow[std::max(0, std::min(i, w - 1))];
+            sumA += (p >> 24) & 0xFF;
+            sumR += (p >> 16) & 0xFF;
+            sumG += (p >> 8) & 0xFF;
+            sumB += p & 0xFF;
+        }
+        
         for (int x = 0; x < w; x++) {
-            int a = 0, rsum = 0, g = 0, b = 0;
-            int count = 0;
+            dstRow[x] = (int)((sumA / div) << 24) | (int)((sumR / div) << 16) | 
+                         (int)((sumG / div) << 8) | (int)(sumB / div);
             
-            for (int k = -r; k <= r; k++) {
-                int sx = x + k;
-                if (sx >= 0 && sx < w) {
-                    int p = temp[y * w + sx];
-                    a += (p >> 24) & 0xFF;
-                    rsum += (p >> 16) & 0xFF;
-                    g += (p >> 8) & 0xFF;
-                    b += p & 0xFF;
-                    count++;
-                }
-            }
+            int pOut = srcRow[std::max(0, x - r)];
+            int pIn = srcRow[std::min(w - 1, x + r + 1)];
             
-            pixels[y * w + x] = ((a / count) << 24) | 
-                               ((rsum / count) << 16) | 
-                               ((g / count) << 8) | 
-                               (b / count);
+            sumA += ((pIn >> 24) & 0xFF) - ((pOut >> 24) & 0xFF);
+            sumR += ((pIn >> 16) & 0xFF) - ((pOut >> 16) & 0xFF);
+            sumG += ((pIn >> 8) & 0xFF) - ((pOut >> 8) & 0xFF);
+            sumB += (pIn & 0xFF) - (pOut & 0xFF);
         }
     }
     
-    memcpy(temp, pixels, w * h * sizeof(int));
-    
     // Vertical pass
     for (int x = 0; x < w; x++) {
+        long long sumA = 0, sumR = 0, sumG = 0, sumB = 0;
+        int div = 2 * r + 1;
+        
+        for (int i = -r; i <= r; i++) {
+            int p = temp[std::max(0, std::min(i, h - 1)) * w + x];
+            sumA += (p >> 24) & 0xFF;
+            sumR += (p >> 16) & 0xFF;
+            sumG += (p >> 8) & 0xFF;
+            sumB += p & 0xFF;
+        }
+        
         for (int y = 0; y < h; y++) {
-            int a = 0, rsum = 0, g = 0, b = 0;
-            int count = 0;
+            pixels[y * w + x] = (int)((sumA / div) << 24) | (int)((sumR / div) << 16) | 
+                                 (int)((sumG / div) << 8) | (int)(sumB / div);
             
-            for (int k = -r; k <= r; k++) {
-                int sy = y + k;
-                if (sy >= 0 && sy < h) {
-                    int p = temp[sy * w + x];
-                    a += (p >> 24) & 0xFF;
-                    rsum += (p >> 16) & 0xFF;
-                    g += (p >> 8) & 0xFF;
-                    b += p & 0xFF;
-                    count++;
-                }
-            }
+            int pOut = temp[std::max(0, y - r) * w + x];
+            int pIn = temp[std::min(h - 1, y + r + 1) * w + x];
             
-            pixels[y * w + x] = ((a / count) << 24) | 
-                               ((rsum / count) << 16) | 
-                               ((g / count) << 8) | 
-                               (b / count);
+            sumA += ((pIn >> 24) & 0xFF) - ((pOut >> 24) & 0xFF);
+            sumR += ((pIn >> 16) & 0xFF) - ((pOut >> 16) & 0xFF);
+            sumG += ((pIn >> 8) & 0xFF) - ((pOut >> 8) & 0xFF);
+            sumB += (pIn & 0xFF) - (pOut & 0xFF);
         }
     }
     
     alignedFree(temp);
 }
 
-// Separable Gaussian blur - higher quality than box blur
+// Gaussian blur - approximated by multiple box blur passes for speed (Stack Blur style)
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeBlurGaussian(
-    JNIEnv*, jclass, jlong handle, jfloat radius) {
+    JNIEnv* env, jclass clazz, jlong handle, jfloat radius) {
     
-    FastImage* img = (FastImage*)handle;
-    int w = img->width;
-    int h = img->height;
-    int* pixels = img->pixels;
+    // For a true Gaussian feel, 3 passes of box blur is an excellent approximation
+    // The radius needs to be adjusted: r_box = sqrt(12 * sigma^2 / n + 1)
+    float sigma = radius;
+    float wIdeal = sqrt((12.0f * sigma * sigma / 3.0f) + 1.0f);
+    int wl = (int)floor(wIdeal);
+    if (wl % 2 == 0) wl--;
+    int wu = wl + 2;
     
-    int r = (int)(radius + 0.5f);
-    if (r < 1) r = 1;
-    if (r > 50) r = 50;
+    float mIdeal = (12.0f * sigma * sigma - 3.0f * wl * wl - 12.0f * wl - 9.0f) / (-4.0f * wl - 4.0f);
+    int m = (int)round(mIdeal);
     
-    // Create Gaussian kernel
-    int kernelSize = 2 * r + 1;
-    float* kernel = new float[kernelSize];
-    float sigma = radius / 2.0f;
-    float twoSigmaSq = 2.0f * sigma * sigma;
-    float sum = 0.0f;
-    
-    for (int i = 0; i < kernelSize; i++) {
-        int x = i - r;
-        kernel[i] = (float)exp(-(x * x) / twoSigmaSq);
-        sum += kernel[i];
+    for (int i = 0; i < 3; i++) {
+        Java_fastimage_FastImage_nativeBlurBox(env, clazz, handle, (float)(i < m ? wl : wu) / 2.0f);
     }
-    // Normalize
-    for (int i = 0; i < kernelSize; i++) {
-        kernel[i] /= sum;
-    }
-    
-    int* temp = alignedAlloc(w * h);
-    memcpy(temp, pixels, w * h * sizeof(int));
-    
-    // Horizontal pass with Gaussian kernel
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            float a = 0, rsum = 0, g = 0, b = 0;
-            
-            for (int k = -r; k <= r; k++) {
-                int sx = x + k;
-                int ki = k + r;
-                if (sx >= 0 && sx < w) {
-                    int p = temp[y * w + sx];
-                    float weight = kernel[ki];
-                    a += ((p >> 24) & 0xFF) * weight;
-                    rsum += ((p >> 16) & 0xFF) * weight;
-                    g += ((p >> 8) & 0xFF) * weight;
-                    b += (p & 0xFF) * weight;
-                }
-            }
-            
-            pixels[y * w + x] = (((int)a << 24) & 0xFF000000) | 
-                               (((int)rsum << 16) & 0x00FF0000) | 
-                               (((int)g << 8) & 0x0000FF00) | 
-                               ((int)b & 0x000000FF);
-        }
-    }
-    
-    memcpy(temp, pixels, w * h * sizeof(int));
-    
-    // Vertical pass with Gaussian kernel
-    for (int x = 0; x < w; x++) {
-        for (int y = 0; y < h; y++) {
-            float a = 0, rsum = 0, g = 0, b = 0;
-            
-            for (int k = -r; k <= r; k++) {
-                int sy = y + k;
-                int ki = k + r;
-                if (sy >= 0 && sy < h) {
-                    int p = temp[sy * w + x];
-                    float weight = kernel[ki];
-                    a += ((p >> 24) & 0xFF) * weight;
-                    rsum += ((p >> 16) & 0xFF) * weight;
-                    g += ((p >> 8) & 0xFF) * weight;
-                    b += (p & 0xFF) * weight;
-                }
-            }
-            
-            pixels[y * w + x] = (((int)a << 24) & 0xFF000000) | 
-                               (((int)rsum << 16) & 0x00FF0000) | 
-                               (((int)g << 8) & 0x0000FF00) | 
-                               ((int)b & 0x000000FF);
-        }
-    }
-    
-    delete[] kernel;
-    alignedFree(temp);
 }
 
 // Stack blur - CSS backdrop-filter style, fast with good quality
