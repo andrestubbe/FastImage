@@ -1,38 +1,26 @@
-# FastXXX Examples
+# 🖼 FastImage Examples
 
-Self-contained example projects demonstrating FastXXX usage.
+Self-contained example projects demonstrating the power and performance of FastImage.
 
-## Structure
+## 📂 Featured Examples
 
-```
-examples/
-├── 00-basic-usage/          # ⬅️ START HERE - Minimal usage
-│   ├── pom.xml              # Standalone Maven project
-│   └── src/main/java/...    # Example code
-├── 10-advanced/             # Advanced usage
-└── 20-ui-demo/              # (Add more examples here)
-```
+*   **[BasicUsage](./BasicUsage)**: Minimal integration example. Start here to learn the core API.
+*   **[ResizeDemo](./ResizeDemo)**: Shows high-quality bilinear and bicubic resizing performance.
+*   **[BlurGallery](./BlurGallery)**: A visual comparison of all blur algorithms (Gaussian, Stack, Kawase).
+*   **[FilterChain](./FilterChain)**: Demonstrates how to chain multiple native operations without returning to the JVM heap.
+*   **[VisualEditor](./VisualEditor)**: **Showcase Demo** - A real-time image editor showing SIMD speed in action.
+*   **[Benchmark](./Benchmark)**: Side-by-side performance comparison with Java2D.
 
-## Running Examples
+---
 
-Each example is a standalone Maven project:
+## 🚀 Running Examples
 
-```bash
-cd examples/00-basic-usage
+Each example is a standalone Maven project. To run the Visual Editor (Showcase):
+
+```powershell
+cd examples/VisualEditor
 mvn compile exec:java
 ```
 
-## Why Root-Level examples/?
-
-- **Not part of the library** - Examples are standalone mini-projects
-- **Not tests** - Examples are tutorials, not JUnit tests
-- **Easy to run** - Each has its own `pom.xml` and main class
-- **Copy-paste friendly** - Users can copy an example as a starter template
-- **SEO-friendly** - Each example can have its own README
-
-## Adding New Examples
-
-1. Create folder: `examples/XX-my-example/` (use number prefix for sorting)
-2. Add `pom.xml` with dependency on `fastXXX`
-3. Add source code in `src/main/java/...`
-4. Add README explaining the example
+> [!NOTE]
+> Ensure you have run `mvn install` in the root directory first so the examples can find the `fastimage` dependency.
