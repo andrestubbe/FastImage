@@ -1,26 +1,23 @@
-# 🖼 FastImage Examples
+# FastImage Examples & Demos
 
-Self-contained example projects demonstrating the power and performance of FastImage.
+This directory contains several projects demonstrating the performance and features of the FastImage library.
 
-## 📂 Featured Examples
+## Core Demos
 
-*   **[BasicUsage](./BasicUsage)**: Minimal integration example. Start here to learn the core API.
-*   **[ResizeDemo](./ResizeDemo)**: Shows high-quality bilinear and bicubic resizing performance.
-*   **[BlurGallery](./BlurGallery)**: A visual comparison of all blur algorithms (Gaussian, Stack, Kawase).
-*   **[FilterChain](./FilterChain)**: Demonstrates how to chain multiple native operations without returning to the JVM heap.
-*   **[VisualEditor](./VisualEditor)**: **Showcase Demo** - A real-time image editor showing SIMD speed in action.
-*   **[Benchmark](./Benchmark)**: Side-by-side performance comparison with Java2D.
+-   **[Visual Editor](./VisualEditor)**: Interactive real-time editor showing live previews of filters (Brightness, Contrast, Blur, Grayscale).
+-   **[Blur Gallery](./BlurGallery)**: Asynchronous performance comparison between Java2D and SIMD-accelerated blurs.
+-   **[Resize Demo](./ResizeDemo)**: Shows the difference between various interpolation methods (Bilinear vs Bicubic).
+-   **[Basic Usage](./BasicUsage)**: Minimal boilerplate example for integration.
 
----
+## Bing Showcase Demos
 
-## 🚀 Running Examples
+-   **[Resize Benchmark](./ResizeBenchmark_Bing)**: Stress-test scaling 4K images to 1080p. Shows parallel progress bars and Ops/s.
+-   **[Pipeline Demo](./PipelineDemo_Bing)**: Visualizes a multi-stage chain (Blur -> Contrast -> Grayscale) with per-step timing.
+-   **[Batch Processing](./BatchProcessing_Bing)**: Demonstrates off-heap efficiency by processing 100 images in parallel.
 
-Each example is a standalone Maven project. To run the Visual Editor (Showcase):
+## Running the Demos
 
+You can run all demos using the root launcher:
 ```powershell
-cd examples/VisualEditor
-mvn compile exec:java
+.\run-demo.bat
 ```
-
-> [!NOTE]
-> Ensure you have run `mvn install` in the root directory first so the examples can find the `fastimage` dependency.

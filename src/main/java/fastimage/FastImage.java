@@ -102,6 +102,12 @@ public class FastImage {
      * @param newWidth  target width
      * @param newHeight target height
      */
+    /**
+     * Resize image using bilinear interpolation
+     * 
+     * @param newWidth  target width
+     * @param newHeight target height
+     */
     public FastImage resize(int newWidth, int newHeight) {
         checkDisposed();
         if (newWidth <= 0 || newHeight <= 0) {
@@ -302,6 +308,14 @@ public class FastImage {
 
     public int getHeight() {
         return height;
+    }
+
+    /**
+     * Internal: Returns the raw pointer to the native FastImage struct.
+     * Use with caution.
+     */
+    public long getNativeHandle() {
+        return nativeHandle;
     }
 
     /**

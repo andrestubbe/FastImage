@@ -11,14 +11,20 @@ echo ==========================================
 echo   FastJava Ecosystem - FastImage Demos
 echo ==========================================
 echo.
+echo  --- Core Demos ---
 echo  [1] Visual Editor (Showcase)
 echo  [2] Blur Gallery (Algorithms)
 echo  [3] Resize Demo (Bilinear/Bicubic)
-echo  [4] Performance Benchmark
-echo  [5] Basic Usage (Minimal)
+echo  [4] Basic Usage (Minimal)
+echo.
+echo  --- Bing Showcase Demos ---
+echo  [5] Resize Benchmark (4K vs 1080p) _Bing
+echo  [6] Pipeline Demo (Multi-Step) _Bing
+echo  [7] Batch Processing (100 Images) _Bing
+echo.
 echo  [Q] Quit
 echo.
-set /p choice="Select a demo to run [1-5, Q]: "
+set /p choice="Select a demo to run [1-7, Q]: "
 
 if /i "%choice%"=="1" (
     set "DEMO_DIR=VisualEditor"
@@ -33,12 +39,20 @@ if /i "%choice%"=="3" (
     set "MAIN=fastimage.ResizeDemo"
 )
 if /i "%choice%"=="4" (
-    set "DEMO_DIR=Benchmark"
-    set "MAIN=fastimage.FastImageBenchmark"
-)
-if /i "%choice%"=="5" (
     set "DEMO_DIR=BasicUsage"
     set "MAIN=fastimage.BasicUsage"
+)
+if /i "%choice%"=="5" (
+    set "DEMO_DIR=ResizeBenchmark_Bing"
+    set "MAIN=fastimage.ResizeBenchmark_Bing"
+)
+if /i "%choice%"=="6" (
+    set "DEMO_DIR=PipelineDemo_Bing"
+    set "MAIN=fastimage.PipelineDemo_Bing"
+)
+if /i "%choice%"=="7" (
+    set "DEMO_DIR=BatchProcessing_Bing"
+    set "MAIN=fastimage.BatchProcessing_Bing"
 )
 if /i "%choice%"=="Q" exit /b
 
@@ -51,12 +65,14 @@ call mvn compile -DskipTests
 
 :: Build CP
 set "CP=target\classes"
+:: Include project classes if we are running from a sub-module
+set "CP=%CP%;..\..\target\classes"
 set "CP=%CP%;%REPO%\com\github\andrestubbe\fastimage\0.1.0\fastimage-0.1.0.jar"
 set "CP=%CP%;%REPO%\com\github\andrestubbe\fastcore\0.1.0\fastcore-0.1.0.jar"
-set "CP=%CP%;%REPO%\com\github\andrestubbe\fasttheme\0.2.0\fasttheme-0.2.0.jar"
 
 echo [+] Launching %MAIN%...
-"%JAVA_HOME%\bin\java.exe" "-Djava.library.path=%LIB_PATH%" -cp "%CP%" %MAIN%
+:: Note: Using --enable-native-access for JDK 21+
+"%JAVA_HOME%\bin\java.exe" "--enable-native-access=ALL-UNNAMED" "-Djava.library.path=%LIB_PATH%" -cp "%CP%" %MAIN%
 
 cd ..\..
 echo.
