@@ -1,4 +1,4 @@
-# FastImage — SIMD‑Accelerated, Off‑Heap Image Processing for Java
+﻿# FastImage â€” SIMDâ€‘Accelerated, Offâ€‘Heap Image Processing for Java
 
 **Ultra-fast native image processing using AVX2/SSE4.1 kernels and zero-GC memory management.**
 
@@ -8,10 +8,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![JitPack](https://jitpack.io/v/andrestubbe/FastImage.svg)](https://jitpack.io/#andrestubbe/FastImage)
 
-FastImage ist eine ultra‑schnelle, native‑beschleunigte Image‑Processing‑Engine für Java, gebaut für das FastJava‑Ecosystem. Es kombiniert AVX/SSE SIMD, off‑heap Storage, zero‑copy Pipelines und eine fluent API, um typische BufferedImage‑Operationen **10–50× schneller** auszuführen — ohne GC‑Pressure, ohne Pixel‑Loops, ohne JVM‑Overhead.
+FastImage ist eine ultraâ€‘schnelle, nativeâ€‘beschleunigte Imageâ€‘Processingâ€‘Engine fÃ¼r Java, gebaut fÃ¼r das FastJavaâ€‘Ecosystem. Es kombiniert AVX/SSE SIMD, offâ€‘heap Storage, zeroâ€‘copy Pipelines und eine fluent API, um typische BufferedImageâ€‘Operationen **10â€“50Ã— schneller** auszufÃ¼hren â€” ohne GCâ€‘Pressure, ohne Pixelâ€‘Loops, ohne JVMâ€‘Overhead.
 
 ```java
-// Quick Start — SIMD-Accelerated Filtering
+// Quick Start â€” SIMD-Accelerated Filtering
 import fastimage.FastImage;
 
 public class Demo {
@@ -45,11 +45,11 @@ public class Demo {
 
 ## Key Features
 
-- **🚀 SIMD Acceleration** — Hand-optimized C++ kernels using **AVX2** and **SSE4.1** vector instructions.
-- **🧠 Zero-GC Overhead** — Pixels are stored in **off-heap** memory, preventing GC pauses during heavy manipulation.
-- **🌀 Advanced Blur Suite** — Real-time Gaussian, Stack (iOS-style), and Kawase blurs.
-- **🛡️ Fail-Safe JNI** — Robust error handling with `FastImageException` and native handle validation.
-- **🔄 Fast Conversion** — Optimized bit-copying between `BufferedImage` and native memory.
+- **ðŸš€ SIMD Acceleration** â€” Hand-optimized C++ kernels using **AVX2** and **SSE4.1** vector instructions.
+- **ðŸ§  Zero-GC Overhead** â€” Pixels are stored in **off-heap** memory, preventing GC pauses during heavy manipulation.
+- **ðŸŒ€ Advanced Blur Suite** â€” Real-time Gaussian, Stack (iOS-style), and Kawase blurs.
+- **ðŸ›¡ï¸ Fail-Safe JNI** â€” Robust error handling with `FastImageException` and native handle validation.
+- **ðŸ”„ Fast Conversion** â€” Optimized bit-copying between `BufferedImage` and native memory.
 
 ---
 
@@ -72,7 +72,7 @@ FastImage utilizes the full power of your CPU, outperforming standard Java2D loo
 ### Option 1: Maven (Recommended)
 Add the JitPack repository and the dependencies to your `pom.xml`:
 
-`xml
+```xml
 <repositories>
     <repository>
         <id>jitpack.io</id>
@@ -87,6 +87,7 @@ Add the JitPack repository and the dependencies to your `pom.xml`:
         <artifactId>fastimage</artifactId>
         <version>v0.1.0</version>
     </dependency>
+
     <!-- FastCore (Required Native Loader) -->
     <dependency>
         <groupId>com.github.andrestubbe</groupId>
@@ -94,19 +95,19 @@ Add the JitPack repository and the dependencies to your `pom.xml`:
         <version>v0.1.0</version>
     </dependency>
 </dependencies>
-`
+```
 
 ### Option 2: Gradle (via JitPack)
-`groovy
+```groovy
 repositories {
     maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    implementation 'com.github.andrestubbe:.1.0'
+    implementation 'com.github.andrestubbe:fastimage:v0.1.0'
     implementation 'com.github.andrestubbe:fastcore:v0.1.0'
 }
-`
+```
 
 ### Option 3: Direct Download (No Build Tool)
 Download the latest JARs directly to add them to your classpath:
@@ -156,17 +157,17 @@ For detailed instructions on compiling the C++ JNI code and building the Maven F
 ---
 
 ## License
-MIT License — See [LICENSE](LICENSE) file for details.
+MIT License â€” See [LICENSE](LICENSE) file for details.
 
 ---
 
 ## Related Projects
-- [FastCore](https://github.com/andrestubbe/FastCore) — Native Library Loader
-- [FastTheme](https://github.com/andrestubbe/FastTheme) — Native Window Styling
-- [FastGraphics](https://github.com/andrestubbe/FastGraphics) — Hardware-accelerated 2D Rendering
+- [FastCore](https://github.com/andrestubbe/FastCore) â€” Native Library Loader
+- [FastTheme](https://github.com/andrestubbe/FastTheme) â€” Native Window Styling
+- [FastGraphics](https://github.com/andrestubbe/FastGraphics) â€” Hardware-accelerated 2D Rendering
 
 ---
-**Made with ⚡ by Andre Stubbe**
+**Made with âš¡ by Andre Stubbe**
 
 <!-- 
 SEO Keywords: java, jni, simd, avx2, sse4, image processing, blur, gaussian, fastjava, off-heap
