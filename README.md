@@ -2,12 +2,6 @@
 
 **Ultra-fast native image processing using AVX2/SSE4.1 kernels and zero-GC memory management.**
 
-[![Build](https://img.shields.io/github/actions/workflow/status/andrestubbe/FastImage/maven.yml?branch=main)](https://github.com/andrestubbe/FastImage/actions)
-[![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![JitPack](https://jitpack.io/v/andrestubbe/FastImage.svg)](https://jitpack.io/#andrestubbe/FastImage)
-
 FastImage ist eine ultra‑schnelle, native‑beschleunigte Image‑Processing‑Engine für Java, gebaut für das FastJava‑Ecosystem. Es kombiniert AVX/SSE SIMD, off‑heap Storage, zero‑copy Pipelines und eine fluent API, um typische BufferedImage‑Operationen **10–50× schneller** auszuführen — ohne GC‑Pressure, ohne Pixel‑Loops, ohne JVM‑Overhead.
 
 ```java
@@ -27,6 +21,12 @@ public class Demo {
     }
 }
 ```
+
+[![Status](https://img.shields.io/badge/status-v0.1.0-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/v0.1.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010+-lightgrey.svg)]()
+[![JitPack](https://img.shields.io/badge/JitPack-ready-green.svg)](https://jitpack.io/#andrestubbe)
 
 ---
 
