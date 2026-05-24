@@ -142,11 +142,11 @@ public class ResizeBenchmark_Bing extends JFrame {
 
         // FastImage Thread
         new Thread(() -> {
-            FastImage fiSrc = FastImage.fromBufferedImage(src4K);
+            FastImage fi = FastImage.fromBufferedImage(src4K);
             while (running) {
-                FastImage fi = FastImage.fromNativeHandle(fiSrc.getNativeHandle(), fiSrc.getWidth(), fiSrc.getHeight());
-                // Note: resize modifies the image, so we'd need a copy if we wanted to reuse src
-                // But for benchmark, we just scale down
+                // For a fair benchmark, we scale from the original size each time.
+                // Since resize() modifies the image, we create a temporary copy if we want to be strict,
+                // but for raw speed measurement, we just scale back and forth.
                 fi.resize(1920, 1080);
                 opsFast.incrementAndGet();
                 if (opsFast.get() % 20 == 0) {
@@ -154,7 +154,7 @@ public class ResizeBenchmark_Bing extends JFrame {
                     ImageIcon icon = new ImageIcon(res.getScaledInstance(450, 250, Image.SCALE_FAST));
                     SwingUtilities.invokeLater(() -> labelFast.setIcon(icon));
                 }
-                // Reset for next loop (this is a simplified bench)
+                // Scale back to 4K to reset for next iteration
                 fi.resize(3840, 2160); 
             }
         }).start();

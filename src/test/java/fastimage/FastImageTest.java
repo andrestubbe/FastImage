@@ -75,4 +75,16 @@ public class FastImageTest {
             FastImage.fromNativeHandle(0, 10, 10).grayscale();
         });
     }
+
+    @Test
+    @DisplayName("Test Stability Stress (Rapid Resize/Filter)")
+    void testStability() {
+        FastImage img = FastImage.create(100, 100);
+        for (int i = 0; i < 50; i++) {
+            img.resize(200, 200);
+            img.adjustBrightness(1.1f);
+            img.resize(100, 100);
+        }
+        img.dispose();
+    }
 }
