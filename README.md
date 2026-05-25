@@ -167,8 +167,6 @@ MIT License — See [LICENSE](LICENSE) file for details.
 - [FastGraphics](https://github.com/andrestubbe/FastGraphics) — Hardware-accelerated 2D Rendering
 
 ---
-**Made with ⚡ by Andre Stubbe**
 
-<!-- 
-SEO Keywords: java, jni, simd, avx2, sse4, image processing, blur, gaussian, fastjava, off-heap
--->
+**Part of the FastJava Ecosystem** — *Making the JVM faster. Small package. Maximum speed. Zero bloat. 🚀📋*
+
