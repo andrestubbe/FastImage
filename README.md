@@ -2,20 +2,23 @@
 
 **Ultra-fast native image processing using AVX2/SSE4.1 kernels and zero-GC memory management.**
 
-FastImage ist eine ultra‑schnelle, native‑beschleunigte Image‑Processing‑Engine für Java, gebaut für das FastJava‑Ecosystem. Es kombiniert AVX/SSE SIMD, off‑heap Storage, zero‑copy Pipelines und eine fluent API, um typische BufferedImage‑Operationen **10–50× schneller** auszuführen — ohne GC‑Pressure, ohne Pixel‑Loops, ohne JVM‑Overhead.
+FastImage ist eine ultra‑schnelle, native‑beschleunigte Image‑Processing‑Engine für Java, gebaut für das
+FastJava‑Ecosystem. Es kombiniert AVX/SSE SIMD, off‑heap Storage, zero‑copy Pipelines und eine fluent API, um typische
+BufferedImage‑Operationen **10–50× schneller** auszuführen — ohne GC‑Pressure, ohne Pixel‑Loops, ohne JVM‑Overhead.
 
 ```java
 // Quick Start — SIMD-Accelerated Filtering
+
 import fastimage.FastImage;
 
 public class Demo {
     public static void main(String[] args) {
         FastImage img = FastImage.load("input.jpg");
-        
+
         img.adjustContrast(1.2f)
-           .blurStack(15.0f)
-           .grayscale();
-           
+                .blurStack(15.0f)
+                .grayscale();
+
         img.save("output.png");
         img.dispose(); // Free native memory
     }
@@ -31,6 +34,7 @@ public class Demo {
 ---
 
 ## Table of Contents
+
 - [Key Features](#key-features)
 - [Performance](#performance)
 - [Installation](#installation)
@@ -57,11 +61,11 @@ public class Demo {
 
 FastImage utilizes the full power of your CPU, outperforming standard Java2D loops by orders of magnitude:
 
-| Operation | Java2D (BufferedImage) | FastImage (SIMD) | Speedup |
-| :--- | :--- | :--- | :--- |
-| **Brightness** | ~48.6 ms/op | **~1.5 ms/op** | **32x** |
-| **Gaussian Blur (r10)** | ~1100.0 ms/op | **~170.4 ms/op** | **6.5x** |
-| **Grayscale** | ~20.0 ms/op | **~1.3 ms/op** | **15x** |
+| Operation               | Java2D (BufferedImage) | FastImage (SIMD) | Speedup  |
+|:------------------------|:-----------------------|:-----------------|:---------|
+| **Brightness**          | ~48.6 ms/op            | **~1.5 ms/op**   | **32x**  |
+| **Gaussian Blur (r10)** | ~1100.0 ms/op          | **~170.4 ms/op** | **6.5x** |
+| **Grayscale**           | ~20.0 ms/op            | **~1.3 ms/op**   | **15x**  |
 
 *Tested on: 1920x1080 (1080p) ARGB Image on Intel i7-12700K.*
 
@@ -70,9 +74,11 @@ FastImage utilizes the full power of your CPU, outperforming standard Java2D loo
 ## Installation
 
 ### Option 1: Maven (Recommended)
+
 Add the JitPack repository and the dependencies to your `pom.xml`:
 
 ```xml
+
 <repositories>
     <repository>
         <id>jitpack.io</id>
@@ -81,23 +87,24 @@ Add the JitPack repository and the dependencies to your `pom.xml`:
 </repositories>
 
 <dependencies>
-    <!-- FastImage Library -->
-    <dependency>
-        <groupId>com.github.andrestubbe</groupId>
-        <artifactId>fastimage</artifactId>
-        <version>v0.1.0</version>
-    </dependency>
+<!-- FastImage Library -->
+<dependency>
+    <groupId>com.github.andrestubbe</groupId>
+    <artifactId>fastimage</artifactId>
+    <version>v0.1.0</version>
+</dependency>
 
-    <!-- FastCore (Required Native Loader) -->
-    <dependency>
-        <groupId>com.github.andrestubbe</groupId>
-        <artifactId>fastcore</artifactId>
-        <version>v0.1.0</version>
-    </dependency>
+<!-- FastCore (Required Native Loader) -->
+<dependency>
+    <groupId>com.github.andrestubbe</groupId>
+    <artifactId>fastcore</artifactId>
+    <version>v0.1.0</version>
+</dependency>
 </dependencies>
 ```
 
 ### Option 2: Gradle (via JitPack)
+
 ```groovy
 repositories {
     maven { url 'https://jitpack.io' }
@@ -110,14 +117,16 @@ dependencies {
 ```
 
 ### Option 3: Direct Download (No Build Tool)
+
 Download the latest JARs directly to add them to your classpath:
 
-1. 📦 **[fastimage-v0.1.0.jar](https://github.com/andrestubbe/FastImage/releases/download/v0.1.0/fastimage-v0.1.0.jar)** (The Core Library)
-2. ⚙️ **[fastcore-v0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/v0.1.0/fastcore-v0.1.0.jar)** (The Mandatory Native Loader)
+1. 📦 **[fastimage-v0.1.0.jar](https://github.com/andrestubbe/FastImage/releases/download/v0.1.0/fastimage-v0.1.0.jar)
+   ** (The Core Library)
+2. ⚙️ **[fastcore-v0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/v0.1.0/fastcore-v0.1.0.jar)** (
+   The Mandatory Native Loader)
 
 > [!IMPORTANT]
 > All JARs must be in your classpath for the native JNI calls to function correctly.
-
 
 ## Try the Demo
 
@@ -130,38 +139,49 @@ Download the latest JARs directly to add them to your classpath:
 
 ## API Reference
 
-| Method | Description |
-| :--- | :--- |
-| `void grayscale()` | Converts image to luminance-weighted grayscale via SIMD. |
-| `void adjustBrightness(f)`| Scales RGB values with saturation clamping. |
-| `void adjustContrast(f)` | Adjusts image contrast around the midpoint. |
-| `void blurGaussian(r)` | High-quality Gaussian blur approximation ($O(N)$). |
-| `void blurStack(r)` | Extremely fast separable weighted blur. |
-| `void resize(w, h)` | Bilinear resizing using native kernels. |
+| Method                     | Description                                              |
+|:---------------------------|:---------------------------------------------------------|
+| `void grayscale()`         | Converts image to luminance-weighted grayscale via SIMD. |
+| `void adjustBrightness(f)` | Scales RGB values with saturation clamping.              |
+| `void adjustContrast(f)`   | Adjusts image contrast around the midpoint.              |
+| `void blurGaussian(r)`     | High-quality Gaussian blur approximation ($O(N)$).       |
+| `void blurStack(r)`        | Extremely fast separable weighted blur.                  |
+| `void resize(w, h)`        | Bilinear resizing using native kernels.                  |
+
+---
+
+## Documentation
+
+* **[COMPILE.md](COMPILE.md)**: Full compilation guide (MSVC C++17 build chain + JNI Setup).
+* **[REFERENCE.md](REFERENCE.md)**: Full API descriptions, border configurations, and codepoint index.
+* **[PHILOSOPHIE.md](PHILOSOPHIE.md)**: The engineering rationale for zero-allocation performance.
+* **[ROADMAP.md](ROADMAP.md)**: Future milestones and planned features.
 
 ---
 
 ## Platform Support
 
-| Architecture | Instruction Set | OS |
-| :--- | :--- | :--- |
-| x64 | **AVX2** (Runtime Dispatch) | Windows 10/11 |
-| x64 | **SSE4.1** (Fallback) | Windows 10/11 |
+| Architecture | Instruction Set             | OS            |
+|:-------------|:----------------------------|:--------------|
+| x64          | **AVX2** (Runtime Dispatch) | Windows 10/11 |
+| x64          | **SSE4.1** (Fallback)       | Windows 10/11 |
 
----
-
-## Building from Source
-
-For detailed instructions on compiling the C++ JNI code and building the Maven FatJAR, see [COMPILE.md](COMPILE.md).
+| Platform      | Status            |
+|---------------|-------------------|
+| Windows 10/11 | ✅ Fully Supported |
+| Linux         | 🚧 Planned        |
+| macOS         | 🚧 Planned        |
 
 ---
 
 ## License
+
 MIT License — See [LICENSE](LICENSE) file for details.
 
 ---
 
 ## Related Projects
+
 - [FastCore](https://github.com/andrestubbe/FastCore) — Native Library Loader
 - [FastTheme](https://github.com/andrestubbe/FastTheme) — Native Window Styling
 - [FastGraphics](https://github.com/andrestubbe/FastGraphics) — Hardware-accelerated 2D Rendering
