@@ -329,11 +329,6 @@ public class FastImage {
         }
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        dispose();
-        super.finalize();
-    }
 
     private void checkDisposed() {
         if (disposed)
