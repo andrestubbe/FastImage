@@ -1,4 +1,4 @@
-﻿# FastImage — SIMD‑Accelerated, Off‑Heap Image Processing for Java
+# FastImage � SIMD-Accelerated, Off-Heap Image Processing for Java
 
 
 [![Status](https://img.shields.io/badge/status-v0.1.0-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/v0.1.0)
@@ -11,12 +11,12 @@
 
 **Ultra-fast native image processing using AVX2/SSE4.1 kernels and zero-GC memory management.**
 
-FastImage ist eine ultra‑schnelle, native‑beschleunigte Image‑Processing‑Engine für Java, gebaut für das
-FastJava‑Ecosystem. Es kombiniert AVX/SSE SIMD, off‑heap Storage, zero‑copy Pipelines und eine fluent API, um typische
-BufferedImage‑Operationen **10–50× schneller** auszuführen — ohne GC‑Pressure, ohne Pixel‑Loops, ohne JVM‑Overhead.
+FastImage ist eine ultra-schnelle, native-beschleunigte Image-Processing-Engine f�r Java, gebaut f�r das
+FastJava-Ecosystem. Es kombiniert AVX/SSE SIMD, off-heap Storage, zero-copy Pipelines und eine fluent API, um typische
+BufferedImage-Operationen **10�50� schneller** auszuf�hren � ohne GC-Pressure, ohne Pixel-Loops, ohne JVM-Overhead.
 
 ```java
-// Quick Start — SIMD-Accelerated Filtering
+// Quick Start � SIMD-Accelerated Filtering
 
 import fastimage.FastImage;
 
@@ -52,11 +52,11 @@ public class Demo {
 
 ## Key Features
 
-- **🚀 SIMD Acceleration** — Hand-optimized C++ kernels using **AVX2** and **SSE4.1** vector instructions.
-- **🧠 Zero-GC Overhead** — Pixels are stored in **off-heap** memory, preventing GC pauses during heavy manipulation.
-- **🌀 Advanced Blur Suite** — Real-time Gaussian, Stack (iOS-style), and Kawase blurs.
-- **🛡️ Fail-Safe JNI** — Robust error handling with `FastImageException` and native handle validation.
-- **🔄 Fast Conversion** — Optimized bit-copying between `BufferedImage` and native memory.
+- **?? SIMD Acceleration** � Hand-optimized C++ kernels using **AVX2** and **SSE4.1** vector instructions.
+- **?? Zero-GC Overhead** � Pixels are stored in **off-heap** memory, preventing GC pauses during heavy manipulation.
+- **?? Advanced Blur Suite** � Real-time Gaussian, Stack (iOS-style), and Kawase blurs.
+- **??? Fail-Safe JNI** � Robust error handling with `FastImageException` and native handle validation.
+- **?? Fast Conversion** � Optimized bit-copying between `BufferedImage` and native memory.
 
 ---
 
@@ -123,9 +123,9 @@ dependencies {
 
 Download the latest JARs directly to add them to your classpath:
 
-1. 📦 **[fastimage-v0.1.0.jar](https://github.com/andrestubbe/FastImage/releases/download/v0.1.0/fastimage-v0.1.0.jar)
+1. ?? **[fastimage-v0.1.0.jar](https://github.com/andrestubbe/FastImage/releases/download/v0.1.0/fastimage-v0.1.0.jar)
    ** (The Core Library)
-2. ⚙️ **[fastcore-v0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/v0.1.0/fastcore-v0.1.0.jar)** (
+2. ?? **[fastcore-v0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/v0.1.0/fastcore-v0.1.0.jar)** (
    The Mandatory Native Loader)
 
 > [!IMPORTANT]
@@ -157,7 +157,7 @@ Download the latest JARs directly to add them to your classpath:
 
 * **[COMPILE.md](docs/COMPILE.md)**: Full compilation guide (MSVC C++17 build chain + JNI Setup).
 * **[REFERENCE.md](docs/REFERENCE.md)**: Full API descriptions, border configurations, and codepoint index.
-* **[PHILOSOPHIE.md](docs/PHILOSOPHIE.md)**: The engineering rationale for zero-allocation performance.
+* **[PHILOSOPHY.md](docs/PHILOSOPHY.md)**: The engineering rationale for zero-allocation performance.
 * **[ROADMAP.md](docs/ROADMAP.md)**: Future milestones and planned features.
 
 ---
@@ -171,25 +171,25 @@ Download the latest JARs directly to add them to your classpath:
 
 | Platform      | Status            |
 |---------------|-------------------|
-| Windows 10/11 | ✅ Fully Supported |
-| Linux         | 🚧 Planned        |
-| macOS         | 🚧 Planned        |
+| Windows 10/11 | ? Fully Supported |
+| Linux         | ?? Planned        |
+| macOS         | ?? Planned        |
 
 ---
 
 ## License
 
-MIT License — See [LICENSE](LICENSE) file for details.
+MIT License � See [LICENSE](LICENSE) file for details.
 
 ---
 
 ## Related Projects
 
-- [FastCore](https://github.com/andrestubbe/FastCore) — Native Library Loader
-- [FastTheme](https://github.com/andrestubbe/FastTheme) — Native Window Styling
-- [FastGraphics](https://github.com/andrestubbe/FastGraphics) — Hardware-accelerated 2D Rendering
+- [FastCore](https://github.com/andrestubbe/FastCore) � Native Library Loader
+- [FastTheme](https://github.com/andrestubbe/FastTheme) � Native Window Styling
+- [FastGraphics](https://github.com/andrestubbe/FastGraphics) � Hardware-accelerated 2D Rendering
 
 ---
 
-**Part of the FastJava Ecosystem** — *Making the JVM faster. Small package. Maximum speed. Zero bloat. 🚀📋*
+**Part of the FastJava Ecosystem** � *Making the JVM faster. Small package. Maximum speed. Zero bloat. ????*
 
