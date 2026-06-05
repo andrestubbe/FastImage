@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>fastimage</groupId>
   <artifactId>batch-processing-bing</artifactId>
-  <version>0.1.0</version>
+  <version>v0.1.0</version>
   <name>FastImage Batch Processing (Bing)</name>
 
   <properties>
@@ -22,8 +22,8 @@
     <dependencies>
     <dependency>
       <groupId>com.github.andrestubbe</groupId>
-            <artifactId>fastimage</artifactId>
-            <version>0.1.0</version>
+            <artifactId>FastImage</artifactId>
+            <version>v0.1.0</version>
     </dependency>
   </dependencies>
 </project>

@@ -1,4 +1,6 @@
 @echo off
+chcp 65001 >nul
+cd /d "%~dp0"
 setlocal
 
 set "JAVA_HOME=C:\Program Files\Java\jdk-25"
