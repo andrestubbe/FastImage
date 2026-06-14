@@ -1,4 +1,4 @@
-# FastImage — SIMD-Accelerated, Off-Heap Image Processing for Java
+# FastImage 0.1.0 [ALPHA-2026-05-17] — SIMD-Accelerated, Off-Heap Image Processing for Java
 
 
 [![Status](https://img.shields.io/badge/status-0.1.0-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/0.1.0)
@@ -9,11 +9,11 @@
 
 ---
 
-**Ultra-fast native image processing using AVX2/SSE4.1 kernels and zero-GC memory management.**
+**🖼️ Ultra-fast native image processing using AVX2/SSE4.1 kernels and zero-GC memory management.**
 
-FastImage ist eine ultra-schnelle, native-beschleunigte Image-Processing-Engine fr Java, gebaut fr das
+FastImage ist eine ultra-schnelle, nativ-beschleunigte Image-Processing-Engine für Java, gebaut für das
 FastJava-Ecosystem. Es kombiniert AVX/SSE SIMD, off-heap Storage, zero-copy Pipelines und eine fluent API, um typische
-BufferedImage-Operationen **1050 schneller** auszufhren  ohne GC-Pressure, ohne Pixel-Loops, ohne JVM-Overhead.
+BufferedImage-Operationen **10–50× schneller** auszuführen — ohne GC-Pressure, ohne Pixel-Loops, ohne JVM-Overhead.
 
 ```java
 // Quick Start  SIMD-Accelerated Filtering
@@ -52,11 +52,11 @@ public class Demo {
 
 ## Key Features
 
-- **ðŸš€ SIMD Acceleration**  Hand-optimized C++ kernels using **AVX2** and **SSE4.1** vector instructions.
-- **ðŸš€ Zero-GC Overhead**  Pixels are stored in **off-heap** memory, preventing GC pauses during heavy manipulation.
-- **ðŸš€ Advanced Blur Suite**  Real-time Gaussian, Stack (iOS-style), and Kawase blurs.
-- **ðŸš€? Fail-Safe JNI**  Robust error handling with `FastImageException` and native handle validation.
-- **ðŸš€ Fast Conversion**  Optimized bit-copying between `BufferedImage` and native memory.
+- **⚡ SIMD Acceleration**: Hand-optimized C++ kernels using **AVX2** and **SSE4.1** vector instructions.
+- **⚙️ Zero-GC Overhead**: Pixels are stored in **off-heap** memory, preventing GC pauses during heavy manipulation.
+- **🎨 Advanced Blur Suite**: Real-time Gaussian, Stack (iOS-style), and Kawase blurs.
+- **🛡️ Fail-Safe JNI**: Robust error handling with `FastImageException` and native handle validation.
+- **📥 Fast Conversion**: Optimized bit-copying between `BufferedImage` and native memory.
 
 ---
 
@@ -123,10 +123,8 @@ dependencies {
 
 Download the latest JARs directly to add them to your classpath:
 
-1. ðŸš€ **[fastimage-0.1.0.jar](https://github.com/andrestubbe/FastImage/releases/download/0.1.0/fastimage-0.1.0.jar)
-   ** (The Core Library)
-2. ðŸš€ **[fastcore-0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/0.1.0/fastcore-0.1.0.jar)** (
-   The Mandatory Native Loader)
+1. 📦 **[fastimage-0.1.0.jar](https://github.com/andrestubbe/FastImage/releases/download/0.1.0/fastimage-0.1.0.jar)** (The Core Library)
+2. ⚙️ **[fastcore-0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/0.1.0/fastcore-0.1.0.jar)** (The Mandatory Native Loader)
 
 > [!IMPORTANT]
 > All JARs must be in your classpath for the native JNI calls to function correctly.
@@ -171,9 +169,9 @@ Download the latest JARs directly to add them to your classpath:
 
 | Platform      | Status            |
 |---------------|-------------------|
-| Windows 10/11 | ? Fully Supported |
-| Linux         | ðŸš€ Planned        |
-| macOS         | ðŸš€ Planned        |
+| Windows 10/11 | ✅ Fully Supported |
+| Linux         | 🔗 Planned        |
+| macOS         | 🔗 Planned        |
 
 ---
 
@@ -191,5 +189,5 @@ MIT License  See [LICENSE](LICENSE) file for details.
 
 ---
 
-**Part of the FastJava Ecosystem**  *Making the JVM faster. Small package. Maximum speed. Zero bloat. ðŸš€ðŸš€*
+**Part of the FastJava Ecosystem** — *Making the JVM faster. Small package. Maximum speed. Zero bloat. 🚀📋*
 
