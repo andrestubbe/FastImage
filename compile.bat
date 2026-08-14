@@ -1,15 +1,12 @@
 @echo off
-:: Native compilation script for JNI projects
-:: Auto-detects Visual Studio and JAVA_HOME
+chcp 65001 >nul
 
 echo ========================================
-echo FastXXX Native Library Builder
+echo FastImage Native Library Builder
 echo ========================================
 
-:: Configuration
 set LIB_NAME=fastimage
 
-:: Try to find VS using vswhere.exe (most reliable)
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if exist "%VSWHERE%" (
     for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do (
@@ -17,83 +14,63 @@ if exist "%VSWHERE%" (
     )
 )
 
-:: Fallback: Check standard paths if vswhere didn't work
 if not defined VS_PATH (
-    if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" (
+    if exist "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" (
+        set "VS_PATH=C:\Program Files\Microsoft Visual Studio\18\Community"
+    ) else if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" (
         set "VS_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community"
-    ) else if exist "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
-        set "VS_PATH=C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
-    ) else if exist "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat" (
-        set "VS_PATH=C:\Program Files\Microsoft Visual Studio\2022\Professional"
-    ) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" (
-        set "VS_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
-    ) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat" (
-        set "VS_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community"
-    ) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
-        set "VS_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise"
     )
 )
 
-:: Check if VS was found
 if not defined VS_PATH (
     echo ERROR: Visual Studio not found!
-    echo.
-    echo Please install Visual Studio 2019 or 2022 with "Desktop development with C++" workload
-    echo Or run this script from "Developer Command Prompt for VS"
     exit /b 1
 )
 
 echo Found Visual Studio at: %VS_PATH%
 
-:: Try to detect JAVA_HOME if not set
 if not defined JAVA_HOME (
-    if exist "C:\Program Files\Java\jdk-25" (
-        set "JAVA_HOME=C:\Program Files\Java\jdk-25"
-    ) else if exist "C:\Program Files\Eclipse Adoptium\jdk-17-hotspot" (
-        set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17-hotspot"
-    ) else if exist "C:\Program Files\Java\jdk-17" (
-        set "JAVA_HOME=C:\Program Files\Java\jdk-17"
-    ) else if exist "C:\Program Files\Microsoft\jdk-17" (
-        set "JAVA_HOME=C:\Program Files\Microsoft\jdk-17"
+    if exist "C:\Program Files\Java\jdk-25.0.3" (
+        set "JAVA_HOME=C:\Program Files\Java\jdk-25.0.3"
+    ) else if exist "C:\Program Files\Java\jdk-21.0.12" (
+        set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.12"
+    ) else if exist "C:\Program Files\Java\latest" (
+        set "JAVA_HOME=C:\Program Files\Java\latest"
     )
 )
 
 if not defined JAVA_HOME (
     echo ERROR: JAVA_HOME not set!
-    echo Please set JAVA_HOME to your JDK installation path
-    echo Example: set JAVA_HOME=C:\Program Files\Java\jdk-17
     exit /b 1
 )
 
 echo Using JAVA_HOME: %JAVA_HOME%
 
-:: Setup environment
-call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
-
-:: Create build directory
-if not exist build mkdir build
-
-echo.
-echo Compiling %LIB_NAME%.dll...
-echo ========================================
-
-cl.exe /O2 /W3 /MD /EHsc /arch:AVX2 ^
-    /I "%JAVA_HOME%\include" ^
-    /I "%JAVA_HOME%\include\win32" ^
-    /Fo:build\ ^
-    /Fe:build\%LIB_NAME%.dll ^
-    native\FastImage.cpp ^
-    /link /DLL /MACHINE:X64 /DEF:native\FastImage.def
-
-:: Check result
-if %ERRORLEVEL% == 0 (
-    echo.
-    echo ✅ Build successful: build\%LIB_NAME%.dll
-) else (
-    echo.
-    echo ❌ Build failed
-    exit /b 1
+if exist "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" (
+    call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+) else if exist "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" (
+    call "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" x64
 )
 
-echo.
+if not exist build mkdir build
 
+cl.exe /O2 /arch:AVX2 /D_CRT_SECURE_NO_WARNINGS /W3 /MD /EHsc /LD ^
+   /I "%JAVA_HOME%\include" ^
+   /I "%JAVA_HOME%\include\win32" ^
+   /Fo:build\ ^
+   /Fe:build\%LIB_NAME%.dll ^
+   native\FastImage.cpp
+
+if %ERRORLEVEL% == 0 (
+    if not exist src\main\resources\native mkdir src\main\resources\native
+    if not exist src\main\resources\win32-x86-64 mkdir src\main\resources\win32-x86-64
+    copy build\fastimage.dll src\main\resources\native\fastimage.dll /Y
+    copy build\fastimage.dll src\main\resources\win32-x86-64\fastimage.dll /Y
+    copy build\fastimage.dll target\classes\native\fastimage.dll /Y 2>nul
+    echo.
+    echo [SUCCESS] DLL built and copied to resources!
+) else (
+    echo.
+    echo [FAILED] Compilation failed.
+    exit /b 1
+)

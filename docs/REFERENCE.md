@@ -1,26 +1,57 @@
-# FastImage Reference
+# FastImage API Reference Manual
 
-## 1. CPU Feature Model
-*   **AVX2** — detected via CPUID. Enables 32-byte vector ops.
-*   **SSE4.2** — detected via CPUID. 16-byte fallback.
-*   **Fallback rule**: AVX2 → SSE4.2 → scalar.
-
-## 2. Guarantees
-*   **Zero-Copy**: All operations use `GetPrimitiveArrayCritical` for direct memory access.
-*   **Unaligned Access**: Safe on all byte boundaries.
-*   **Thread-Safety**: All static native methods are thread-safe.
-
-## 3. JNI & Memory Contracts
-*   **Direct Memory Pinning**: No implicit copies are made by the JNI bridge.
-*   **No Allocation**: All operations work on pre-allocated Java arrays or buffers.
-*   **Critical Sections**: Native calls minimize blocking to prevent GC impact.
-
-## 4. Platform Support
-| Platform | Status |
-|----------|--------|
-| Windows 10/11 (x64) | ✅ Fully Supported |
+`FastImage` provides high-performance off-heap image processing for Java with native AVX2 SIMD bilinear scaling, Dual-Kawase blur filters, and color transformations.
 
 ---
-**Part of the FastJava Ecosystem** — *Making the JVM faster.*
 
-Made with ⚡ by Andre Stubbe
+## 1. Creation & Factory API
+
+### `create`
+```java
+public static FastImage create(int width, int height)
+```
+Allocates an unmanaged off-heap 32-bit ARGB pixel buffer in native memory.
+
+---
+
+### `fromBufferedImage`
+```java
+public static FastImage fromBufferedImage(BufferedImage img)
+```
+Converts a Java `BufferedImage` into an off-heap `FastImage` instance.
+
+---
+
+## 2. Image Operations & Filters
+
+### `resize`
+```java
+public FastImage resize(int newWidth, int newHeight)
+```
+Resizes the image to target dimensions using native C++ AVX2 SIMD bilinear interpolation.
+
+---
+
+### `blurKawase`
+```java
+public FastImage blurKawase(float radius, int passes)
+```
+Applies high-speed Dual-Kawase blur filtering (ideal for UI translucent overlays).
+
+---
+
+### `grayscale`
+```java
+public FastImage grayscale()
+```
+Converts color image pixels to grayscale using AVX2 SIMD luminance weighting.
+
+---
+
+## 3. Export API
+
+### `toBufferedImage`
+```java
+public BufferedImage toBufferedImage()
+```
+Creates a standard Java `BufferedImage` representation from the native pixel memory.

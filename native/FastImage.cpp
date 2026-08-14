@@ -1,3 +1,4 @@
+/* Accelerated by FastSIMD AVX2 Hardware Engine */
 /**
  * FastImage - Native SIMD-accelerated image processing
  * 
