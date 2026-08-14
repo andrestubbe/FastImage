@@ -12,7 +12,7 @@
 
 `FastImage` provides ultra-fast C++ native image processing for Java applications, replacing slow JVM `BufferedImage` rendering loops with SIMD-accelerated Bilinear scaling, Dual-Kawase blur, and color transforms.
 
-![docs/screenshot.png](docs/screenshot.png)
+![Showcase](https://raw.githubusercontent.com/andrestubbe/FastImage/main/docs/screenshot.png)
 
 ---
 
