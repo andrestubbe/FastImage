@@ -3,6 +3,7 @@ package fastimage;
 import fastcore.FastCore;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -91,17 +92,62 @@ public class FastImage {
         return img;
     }
 
+    /**
+     * Wrap an external native memory pointer (e.g. from FastScreen, FastCamera, or FastSharedMemory)
+     * as a FastImage with zero-copy.
+     * The underlying memory is NOT freed when this FastImage is disposed or resized.
+     *
+     * @param rawPointer 64-bit native memory address pointing to ARGB/BGRA pixels
+     * @param width image width
+     * @param height image height
+     */
+    public static FastImage wrap(long rawPointer, int width, int height) {
+        if (rawPointer == 0L) {
+            throw new FastImageException("Raw pointer is null (0)");
+        }
+        if (width <= 0 || height <= 0) {
+            throw new FastImageException("Invalid dimensions: " + width + "x" + height);
+        }
+        FastImage img = new FastImage();
+        img.width = width;
+        img.height = height;
+        img.nativeHandle = nativeWrap(width, height, rawPointer);
+        return img;
+    }
+
+    /**
+     * Wrap a FastPointer (e.g. from FastSharedMemory or FastMemory) with zero-copy.
+     */
+    public static FastImage wrap(fastpointer.Pointer pointer, int width, int height) {
+        if (pointer == null || pointer.isNull()) {
+            throw new FastImageException("Pointer is null");
+        }
+        return wrap(pointer.address(), width, height);
+    }
+
+    /**
+     * Wrap a DirectByteBuffer (e.g. from FastScreen / FastCamera) with zero-copy.
+     */
+    public static FastImage wrap(ByteBuffer directBuffer, int width, int height) {
+        if (directBuffer == null || !directBuffer.isDirect()) {
+            throw new FastImageException("ByteBuffer must be non-null and direct");
+        }
+        long address;
+        try {
+            Field addressField = java.nio.Buffer.class.getDeclaredField("address");
+            addressField.setAccessible(true);
+            address = addressField.getLong(directBuffer);
+        } catch (Exception e) {
+            throw new FastImageException("Failed to extract direct address from ByteBuffer: " + e.getMessage());
+        }
+        return wrap(address, width, height);
+    }
+
     private FastImage() {
     }
 
     // === Core Operations ===
 
-    /**
-     * Resize image using bilinear interpolation
-     * 
-     * @param newWidth  target width
-     * @param newHeight target height
-     */
     /**
      * Resize image using bilinear interpolation
      * 
@@ -114,6 +160,25 @@ public class FastImage {
             throw new FastImageException("Invalid dimensions: " + newWidth + "x" + newHeight);
         }
         nativeResize(nativeHandle, newWidth, newHeight);
+        this.width = newWidth;
+        this.height = newHeight;
+        return this;
+    }
+
+    /**
+     * High-quality Anti-Aliasing Box / Area-Averaging Downsampling.
+     * Computes the weighted average of all source pixels covering each target pixel.
+     * Eliminates shimmering and pixel crawling when scaling down high-resolution screens or camera feeds.
+     *
+     * @param newWidth  target width
+     * @param newHeight target height
+     */
+    public FastImage resizeAreaAverage(int newWidth, int newHeight) {
+        checkDisposed();
+        if (newWidth <= 0 || newHeight <= 0) {
+            throw new FastImageException("Invalid dimensions: " + newWidth + "x" + newHeight);
+        }
+        nativeResizeAreaAverage(nativeHandle, newWidth, newHeight);
         this.width = newWidth;
         this.height = newHeight;
         return this;
@@ -341,9 +406,13 @@ public class FastImage {
 
     private static native long nativeCreateEmpty(int width, int height);
 
+    private static native long nativeWrap(int width, int height, long rawPointer);
+
     private static native void nativeDispose(long handle);
 
     private static native void nativeResize(long handle, int newWidth, int newHeight);
+
+    private static native void nativeResizeAreaAverage(long handle, int newWidth, int newHeight);
 
     private static native void nativeBlurBox(long handle, float radius);
 

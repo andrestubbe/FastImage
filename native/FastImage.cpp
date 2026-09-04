@@ -95,6 +95,20 @@ JNIEXPORT jlong JNICALL Java_fastimage_FastImage_nativeCreateEmpty(
     return (jlong)img;
 }
 
+JNIEXPORT jlong JNICALL Java_fastimage_FastImage_nativeWrap(
+    JNIEnv* env, jclass, jint width, jint height, jlong rawPointer) {
+    if (rawPointer == 0) {
+        throwFastImageException(env, "Raw pointer is null (0)");
+        return 0;
+    }
+    FastImage* img = new FastImage();
+    img->width = width;
+    img->height = height;
+    img->pixels = (int*)rawPointer;
+    img->owned = false; // Never free externally provided buffer
+    return (jlong)img;
+}
+
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeDispose(
     JNIEnv*, jclass, jlong handle) {
     
@@ -391,10 +405,90 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResize(
             newPixels[y * newWidth + x] = (a << 24) | (r << 16) | (g << 8) | b;
         }
     }
-    alignedFree(oldPixels);
+    if (src->owned) {
+        alignedFree(oldPixels);
+    }
     src->pixels = newPixels;
     src->width = newWidth;
     src->height = newHeight;
+    src->owned = true; // Now we own the newly allocated buffer
+}
+
+// Anti-Aliasing Box / Area-Averaging Resampler (Stufe B downsampling)
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResizeAreaAverage(
+    JNIEnv* env, jclass, jlong handle, jint newWidth, jint newHeight) {
+    if (handle == 0) { throwFastImageException(env, "Native handle is null"); return; }
+    FastImage* src = (FastImage*)handle;
+    int oldW = src->width;
+    int oldH = src->height;
+    int* oldPixels = src->pixels;
+    int* newPixels = alignedAlloc(newWidth * newHeight);
+
+    float scaleX = (float)oldW / newWidth;
+    float scaleY = (float)oldH / newHeight;
+
+    for (int y = 0; y < newHeight; y++) {
+        float srcY0 = y * scaleY;
+        float srcY1 = (y + 1) * scaleY;
+        int yStart = (int)srcY0;
+        int yEnd = (int)ceilf(srcY1);
+        if (yEnd > oldH) yEnd = oldH;
+
+        for (int x = 0; x < newWidth; x++) {
+            float srcX0 = x * scaleX;
+            float srcX1 = (x + 1) * scaleX;
+            int xStart = (int)srcX0;
+            int xEnd = (int)ceilf(srcX1);
+            if (xEnd > oldW) xEnd = oldW;
+
+            float totalWeight = 0.0f;
+            float sumA = 0.0f, sumR = 0.0f, sumG = 0.0f, sumB = 0.0f;
+
+            for (int sy = yStart; sy < yEnd; sy++) {
+                float wy = 1.0f;
+                if (sy < srcY0) wy -= (srcY0 - sy);
+                if (sy + 1 > srcY1) wy -= ((sy + 1) - srcY1);
+                if (wy <= 0.0f) continue;
+
+                const int* row = oldPixels + sy * oldW;
+
+                for (int sx = xStart; sx < xEnd; sx++) {
+                    float wx = 1.0f;
+                    if (sx < srcX0) wx -= (srcX0 - sx);
+                    if (sx + 1 > srcX1) wx -= ((sx + 1) - srcX1);
+                    if (wx <= 0.0f) continue;
+
+                    float w = wx * wy;
+                    totalWeight += w;
+
+                    int p = row[sx];
+                    sumA += ((p >> 24) & 0xFF) * w;
+                    sumR += ((p >> 16) & 0xFF) * w;
+                    sumG += ((p >> 8) & 0xFF) * w;
+                    sumB += (p & 0xFF) * w;
+                }
+            }
+
+            if (totalWeight > 0.0f) {
+                float invW = 1.0f / totalWeight;
+                int a = std::min(255, std::max(0, (int)(sumA * invW + 0.5f)));
+                int r = std::min(255, std::max(0, (int)(sumR * invW + 0.5f)));
+                int g = std::min(255, std::max(0, (int)(sumG * invW + 0.5f)));
+                int b = std::min(255, std::max(0, (int)(sumB * invW + 0.5f)));
+                newPixels[y * newWidth + x] = (a << 24) | (r << 16) | (g << 8) | b;
+            } else {
+                newPixels[y * newWidth + x] = oldPixels[std::min(yStart, oldH - 1) * oldW + std::min(xStart, oldW - 1)];
+            }
+        }
+    }
+
+    if (src->owned) {
+        alignedFree(oldPixels);
+    }
+    src->pixels = newPixels;
+    src->width = newWidth;
+    src->height = newHeight;
+    src->owned = true;
 }
 
 // Optimized Box Blur using sliding window (O(N))

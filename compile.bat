@@ -30,7 +30,9 @@ if not defined VS_PATH (
 echo Found Visual Studio at: %VS_PATH%
 
 if not defined JAVA_HOME (
-    if exist "C:\Program Files\Java\jdk-25.0.3" (
+    if exist "C:\Program Files\Java\jdk-21.0.12.1" (
+        set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.12.1"
+    ) else if exist "C:\Program Files\Java\jdk-25.0.3" (
         set "JAVA_HOME=C:\Program Files\Java\jdk-25.0.3"
     ) else if exist "C:\Program Files\Java\jdk-21.0.12" (
         set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.12"
@@ -59,7 +61,8 @@ cl.exe /O2 /arch:AVX2 /D_CRT_SECURE_NO_WARNINGS /W3 /MD /EHsc /LD ^
    /I "%JAVA_HOME%\include\win32" ^
    /Fo:build\ ^
    /Fe:build\%LIB_NAME%.dll ^
-   native\FastImage.cpp
+   native\FastImage.cpp ^
+   /link /DEF:native\FastImage.def
 
 if %ERRORLEVEL% == 0 (
     if not exist src\main\resources\native mkdir src\main\resources\native

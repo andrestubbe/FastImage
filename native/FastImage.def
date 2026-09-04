@@ -2,8 +2,10 @@ LIBRARY fastimage
 EXPORTS
     Java_fastimage_FastImage_nativeCreate
     Java_fastimage_FastImage_nativeCreateEmpty
+    Java_fastimage_FastImage_nativeWrap
     Java_fastimage_FastImage_nativeDispose
     Java_fastimage_FastImage_nativeResize
+    Java_fastimage_FastImage_nativeResizeAreaAverage
     Java_fastimage_FastImage_nativeBlurBox
     Java_fastimage_FastImage_nativeBlurGaussian
     Java_fastimage_FastImage_nativeBlurStack
