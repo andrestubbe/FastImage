@@ -1,13 +1,13 @@
 > [!WARNING]
 > **🚧 WIP — Active Memory Architecture Optimization & Hardware SIMD Pipeline Extension in Progress.**
 
-# FastImage 0.1.1 [ALPHA-2026-08] — High-Performance Off-Heap Image Processing for Java
+# FastImage 0.1.2 [ALPHA-2026-08] — High-Performance Off-Heap Image Processing for Java
 
-[![Status](https://img.shields.io/badge/status-0.1.1-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/0.1.1)
+[![Status](https://img.shields.io/badge/status-0.1.2-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/0.1.2)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010+-lightgrey.svg)]()
-[![JitPack](https://img.shields.io/badge/JitPack-0.1.1-green.svg)](https://jitpack.io/#andrestubbe/FastImage)
+[![JitPack](https://img.shields.io/badge/JitPack-0.1.2-green.svg)](https://jitpack.io/#andrestubbe/FastImage)
 
 ---
 
@@ -146,7 +146,7 @@ Add the JitPack repository and the complete dependency stack to your `pom.xml`:
     <dependency>
         <groupId>com.github.andrestubbe</groupId>
         <artifactId>FastImage</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.2</version>
     </dependency>
 
     <!-- FastSIMD Hardware Vector Acceleration Engine -->
@@ -160,14 +160,14 @@ Add the JitPack repository and the complete dependency stack to your `pom.xml`:
     <dependency>
         <groupId>com.github.andrestubbe</groupId>
         <artifactId>FastMemory</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.2</version>
     </dependency>
 
     <!-- FastPointer Address Wrapper -->
     <dependency>
         <groupId>com.github.andrestubbe</groupId>
         <artifactId>FastPointer</artifactId>
-        <version>0.1.1</version>
+        <version>0.1.2</version>
     </dependency>
 
     <!-- FastCore Native Loader -->
@@ -187,10 +187,10 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.andrestubbe:FastImage:0.1.1'
+    implementation 'com.github.andrestubbe:FastImage:0.1.2'
     implementation 'com.github.andrestubbe:FastSIMD:0.1.3'
-    implementation 'com.github.andrestubbe:FastMemory:0.1.1'
-    implementation 'com.github.andrestubbe:FastPointer:0.1.1'
+    implementation 'com.github.andrestubbe:FastMemory:0.1.2'
+    implementation 'com.github.andrestubbe:FastPointer:0.1.2'
     implementation 'com.github.andrestubbe:FastCore:0.1.0'
 }
 ```
@@ -199,10 +199,10 @@ dependencies {
 
 Download the required JARs directly to add them to your classpath:
 
-1. ⚡ **[FastImage-0.1.1.jar](https://github.com/andrestubbe/FastImage/releases/download/0.1.1/FastImage-0.1.1.jar)** (The Core Library)
+1. ⚡ **[FastImage-0.1.2.jar](https://github.com/andrestubbe/FastImage/releases/tag/0.1.2/FastImage-0.1.2.jar)** (The Core Library)
 2. 🚀 **[FastSIMD-0.1.3.jar](https://github.com/andrestubbe/FastSIMD/releases/download/0.1.3/FastSIMD-0.1.3.jar)** (Hardware Vector Acceleration Engine)
-3. 💾 **[FastMemory-0.1.1.jar](https://github.com/andrestubbe/FastMemory/releases/download/0.1.1/FastMemory-0.1.1.jar)** (32-Byte Aligned Allocator)
-4. 📍 **[FastPointer-0.1.1.jar](https://github.com/andrestubbe/FastPointer/releases/download/0.1.1/FastPointer-0.1.1.jar)** (Primitive Address Pointer)
+3. 💾 **[FastMemory-0.1.2.jar](https://github.com/andrestubbe/FastMemory/releases/tag/0.1.2/FastMemory-0.1.2.jar)** (32-Byte Aligned Allocator)
+4. 📍 **[FastPointer-0.1.2.jar](https://github.com/andrestubbe/FastPointer/releases/tag/0.1.2/FastPointer-0.1.2.jar)** (Primitive Address Pointer)
 5. ⚙️ **[fastcore-0.1.0.jar](https://github.com/andrestubbe/FastCore/releases/download/0.1.0/fastcore-0.1.0.jar)** (Mandatory Native Loader)
 
 > [!IMPORTANT]
