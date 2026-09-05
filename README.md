@@ -126,7 +126,8 @@ JMH_Image.benchmarkFastImageResize    thrpt    2  19.521          ops/s
 JMH_Image.benchmarkFastImageKawaseBlur thrpt   2  17.942          ops/s
 ```
 
-> **1080p Real-Time Processing (19+ Full Frames / sec)**: `FastImage` resizes 1080p full HD uncompressed image buffers to 720p at **19.5 full operations per second** with **zero JVM Garbage Collection allocations**.
+> [!NOTE]
+> **Environment & Setup**: Measured on an Intel Core i7 with Windows 11. `FastImage` resizes 1080p full HD uncompressed image buffers to 720p at **19.5+ full operations per second** with **zero JVM Garbage Collection allocations**.
 
 ---
 
