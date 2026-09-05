@@ -1,6 +1,7 @@
 package fastimage;
 
 import fastcore.FastCore;
+
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.lang.reflect.Field;
@@ -10,17 +11,17 @@ import java.nio.ByteOrder;
 /**
  * FastImage - High-performance off-heap image processing with SIMD
  * acceleration.
- * 
+ * <p>
  * Stores pixel data in native memory (off-heap) outside JVM garbage collection,
  * providing 10-50× faster image operations than BufferedImage via SSE/AVX SIMD.
- * 
+ * <p>
  * Supported operations:
  * - resize (bilinear, bicubic)
  * - blur (gaussian)
  * - grayscale
  * - brightness/contrast adjustment
  * - flip horizontal/vertical
- * 
+ * <p>
  * Memory: Uses ByteBuffer.allocateDirect() - not counted in JVM heap!
  */
 public class FastImage {
@@ -34,6 +35,9 @@ public class FastImage {
     private int width;
     private int height;
     private boolean disposed = false;
+
+    private FastImage() {
+    }
 
     /**
      * Create FastImage from BufferedImage (ARGB format)
@@ -98,8 +102,8 @@ public class FastImage {
      * The underlying memory is NOT freed when this FastImage is disposed or resized.
      *
      * @param rawPointer 64-bit native memory address pointing to ARGB/BGRA pixels
-     * @param width image width
-     * @param height image height
+     * @param width      image width
+     * @param height     image height
      */
     public static FastImage wrap(long rawPointer, int width, int height) {
         if (rawPointer == 0L) {
@@ -143,14 +147,11 @@ public class FastImage {
         return wrap(address, width, height);
     }
 
-    private FastImage() {
-    }
-
     // === Core Operations ===
 
     /**
      * Resize image using bilinear interpolation
-     * 
+     *
      * @param newWidth  target width
      * @param newHeight target height
      */
@@ -206,7 +207,7 @@ public class FastImage {
     /**
      * Fast box blur - quickest approximation.
      * Good for real-time effects where speed matters.
-     * 
+     *
      * @param radius blur radius (0-50)
      */
     public FastImage blurBox(float radius) {
@@ -220,7 +221,7 @@ public class FastImage {
     /**
      * Separable Gaussian blur - high quality, smooth results.
      * Slower than box blur but looks much better.
-     * 
+     *
      * @param radius blur radius (0-50)
      */
     public FastImage blurGaussian(float radius) {
@@ -234,7 +235,7 @@ public class FastImage {
     /**
      * Stack blur - CSS backdrop-filter quality.
      * Best balance of speed and quality for UI effects.
-     * 
+     *
      * @param radius blur radius (0-100)
      */
     public FastImage blurStack(float radius) {
@@ -248,7 +249,7 @@ public class FastImage {
     /**
      * Kawase blur - multi-pass blur used by Apple/Google.
      * Very soft edges with configurable quality.
-     * 
+     *
      * @param radius blur radius (0-50)
      * @param passes number of passes (1-5, higher = softer)
      */
@@ -263,7 +264,7 @@ public class FastImage {
     /**
      * Dual Kawase blur - premium 2-pass algorithm.
      * Best quality with excellent performance.
-     * 
+     *
      * @param radius blur radius (0-50)
      */
     public FastImage blurDualKawase(float radius) {
@@ -276,7 +277,7 @@ public class FastImage {
     /**
      * Mipmapped blur - for very large blur radii (100+).
      * Uses downscaling + small blur + upscaling.
-     * 
+     *
      * @param radius blur radius (0-200)
      */
     public FastImage blurMipmapped(float radius) {
@@ -297,7 +298,7 @@ public class FastImage {
 
     /**
      * Adjust brightness
-     * 
+     *
      * @param factor 0.0 = black, 1.0 = unchanged, 2.0 = double brightness
      */
     public FastImage adjustBrightness(float factor) {
@@ -309,7 +310,7 @@ public class FastImage {
 
     /**
      * Adjust contrast
-     * 
+     *
      * @param factor 0.0 = gray, 1.0 = unchanged, 2.0 = double contrast
      */
     public FastImage adjustContrast(float factor) {
@@ -339,7 +340,7 @@ public class FastImage {
 
     /**
      * Crop image to region (creates new FastImage, leaves original)
-     * 
+     *
      * @param x left coordinate
      * @param y top coordinate
      * @param w width
@@ -384,6 +385,17 @@ public class FastImage {
         return pixels;
     }
 
+    /**
+     * Free native memory
+     */
+    public void dispose() {
+        if (!disposed && nativeHandle != 0) {
+            nativeDispose(nativeHandle);
+            nativeHandle = 0;
+            disposed = true;
+        }
+    }
+
     // === Getters ===
 
     public int getWidth() {
@@ -400,17 +412,6 @@ public class FastImage {
      */
     public long getNativeHandle() {
         return nativeHandle;
-    }
-
-    /**
-     * Free native memory
-     */
-    public void dispose() {
-        if (!disposed && nativeHandle != 0) {
-            nativeDispose(nativeHandle);
-            nativeHandle = 0;
-            disposed = true;
-        }
     }
 
 
