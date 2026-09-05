@@ -166,6 +166,25 @@ public class FastImage {
     }
 
     /**
+     * Ultra-sharp Catmull-Rom Bicubic Spline Image Resampling.
+     * Yields the highest visual sharpness, smooth gradients, and best anti-aliased edges
+     * for scaling up or down high-definition graphics and screen captures.
+     *
+     * @param newWidth  target width
+     * @param newHeight target height
+     */
+    public FastImage resizeBicubic(int newWidth, int newHeight) {
+        checkDisposed();
+        if (newWidth <= 0 || newHeight <= 0) {
+            throw new FastImageException("Invalid dimensions: " + newWidth + "x" + newHeight);
+        }
+        nativeResizeBicubic(nativeHandle, newWidth, newHeight);
+        this.width = newWidth;
+        this.height = newHeight;
+        return this;
+    }
+
+    /**
      * High-quality Anti-Aliasing Box / Area-Averaging Downsampling.
      * Computes the weighted average of all source pixels covering each target pixel.
      * Eliminates shimmering and pixel crawling when scaling down high-resolution screens or camera feeds.
@@ -411,6 +430,8 @@ public class FastImage {
     private static native void nativeDispose(long handle);
 
     private static native void nativeResize(long handle, int newWidth, int newHeight);
+
+    private static native void nativeResizeBicubic(long handle, int newWidth, int newHeight);
 
     private static native void nativeResizeAreaAverage(long handle, int newWidth, int newHeight);
 

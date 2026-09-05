@@ -77,6 +77,24 @@ public class FastImageTest {
     }
 
     @Test
+    @DisplayName("Test Bicubic & Area-Average Anti-Aliasing Resampling")
+    void testBicubicAndAreaAverage() {
+        FastImage img = FastImage.create(200, 200);
+        img.resizeBicubic(150, 150);
+        assertEquals(150, img.getWidth());
+        assertEquals(150, img.getHeight());
+
+        img.resizeAreaAverage(80, 80);
+        assertEquals(80, img.getWidth());
+        assertEquals(80, img.getHeight());
+
+        assertThrows(FastImageException.class, () -> img.resizeBicubic(0, 100));
+        assertThrows(FastImageException.class, () -> img.resizeAreaAverage(-10, 80));
+
+        img.dispose();
+    }
+
+    @Test
     @DisplayName("Test Stability Stress (Rapid Resize/Filter)")
     void testStability() {
         FastImage img = FastImage.create(100, 100);

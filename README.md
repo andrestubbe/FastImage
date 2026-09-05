@@ -1,16 +1,16 @@
-# FastImage 0.1.2 [ALPHA-2026-08] — High-Performance Off-Heap Image Processing for Java
+# FastImage 0.1.3 [ALPHA-2026-09] — High-Performance Off-Heap Image Processing for Java
 
-[![Status](https://img.shields.io/badge/status-0.1.2-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/0.1.2)
+[![Status](https://img.shields.io/badge/status-0.1.3-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/0.1.3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://www.java.com)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010+-lightgrey.svg)]()
-[![JitPack](https://img.shields.io/badge/JitPack-0.1.2-green.svg)](https://jitpack.io/#andrestubbe/FastImage)
+[![JitPack](https://img.shields.io/badge/JitPack-0.1.3-green.svg)](https://jitpack.io/#andrestubbe/FastImage)
 
 ---
 
-**⚡ 10–50× faster than Java's BufferedImage.** Off-heap zero-copy memory. SIMD AVX2 accelerated image scaling and blur filters.
+**⚡ 10–50× faster than Java's BufferedImage.** Off-heap zero-copy memory. SIMD AVX2 accelerated Bicubic spline, Area-Average Anti-Aliasing, and blur filters.
 
-`FastImage` provides ultra-fast C++ native image processing for Java applications, replacing slow JVM `BufferedImage` rendering loops with SIMD-accelerated Bilinear scaling, Dual-Kawase blur, and color transforms.
+`FastImage` provides ultra-fast C++ native image processing for Java applications, replacing slow JVM `BufferedImage` rendering loops with SIMD-accelerated Catmull-Rom Bicubic scaling, Area-Average Anti-Aliasing, Dual-Kawase blur, and color transforms.
 
 ![Showcase](https://raw.githubusercontent.com/andrestubbe/FastImage/main/docs/screenshot.png)
 
@@ -134,6 +134,8 @@ JMH_Image.benchmarkFastImageKawaseBlur thrpt   2  17.942          ops/s
 |--------|-------------|------|
 | `create(width, height)` | Creates an off-heap `FastImage` instance. | [Reference 📖](docs/REFERENCE.md#create) |
 | `resize(newW, newH)` | AVX2 SIMD bilinear image scaling. | [Reference 📖](docs/REFERENCE.md#resize) |
+| `resizeBicubic(newW, newH)` | Ultra-sharp Catmull-Rom Bicubic spline resampling. | [Reference 📖](docs/REFERENCE.md#resizebicubic) |
+| `resizeAreaAverage(newW, newH)` | Area-Average Anti-Aliasing downsampler. | [Reference 📖](docs/REFERENCE.md#resizeareaaverage) |
 | `blurKawase(radius, passes)` | High-speed Dual-Kawase blur filter. | [Reference 📖](docs/REFERENCE.md#blurkawase) |
 
 ---
@@ -157,7 +159,7 @@ Add the JitPack repository and the complete dependency stack to your `pom.xml`:
     <dependency>
         <groupId>com.github.andrestubbe</groupId>
         <artifactId>FastImage</artifactId>
-        <version>0.1.2</version>
+        <version>0.1.3</version>
     </dependency>
 
     <!-- FastSIMD Hardware Vector Acceleration Engine -->

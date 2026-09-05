@@ -414,6 +414,80 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResize(
     src->owned = true; // Now we own the newly allocated buffer
 }
 
+// High-Precision Bicubic (Catmull-Rom spline) Image Resampling Kernel
+static inline float catmullRom(float x) {
+    x = fabsf(x);
+    if (x <= 1.0f) {
+        return 1.5f * x * x * x - 2.5f * x * x + 1.0f;
+    } else if (x < 2.0f) {
+        return -0.5f * x * x * x + 2.5f * x * x - 4.0f * x + 2.0f;
+    }
+    return 0.0f;
+}
+
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResizeBicubic(
+    JNIEnv* env, jclass, jlong handle, jint newWidth, jint newHeight) {
+    if (handle == 0) { throwFastImageException(env, "Native handle is null"); return; }
+    FastImage* src = (FastImage*)handle;
+    int oldW = src->width;
+    int oldH = src->height;
+    int* oldPixels = src->pixels;
+    int* newPixels = alignedAlloc(newWidth * newHeight);
+
+    float scaleX = (float)oldW / newWidth;
+    float scaleY = (float)oldH / newHeight;
+
+    for (int y = 0; y < newHeight; y++) {
+        float srcY = (y + 0.5f) * scaleY - 0.5f;
+        int y0 = (int)floorf(srcY);
+
+        for (int x = 0; x < newWidth; x++) {
+            float srcX = (x + 0.5f) * scaleX - 0.5f;
+            int x0 = (int)floorf(srcX);
+
+            float totalWeight = 0.0f;
+            float sumA = 0.0f, sumR = 0.0f, sumG = 0.0f, sumB = 0.0f;
+
+            for (int dy = -1; dy <= 2; dy++) {
+                int sy = y0 + dy;
+                int clampedY = std::max(0, std::min(oldH - 1, sy));
+                float wy = catmullRom(srcY - sy);
+                const int* row = oldPixels + clampedY * oldW;
+
+                for (int dx = -1; dx <= 2; dx++) {
+                    int sx = x0 + dx;
+                    int clampedX = std::max(0, std::min(oldW - 1, sx));
+                    float wx = catmullRom(srcX - sx);
+                    float w = wx * wy;
+
+                    totalWeight += w;
+                    int p = row[clampedX];
+                    sumA += ((p >> 24) & 0xFF) * w;
+                    sumR += ((p >> 16) & 0xFF) * w;
+                    sumG += ((p >> 8) & 0xFF) * w;
+                    sumB += (p & 0xFF) * w;
+                }
+            }
+
+            float invW = (totalWeight != 0.0f) ? (1.0f / totalWeight) : 1.0f;
+            int a = std::min(255, std::max(0, (int)(sumA * invW + 0.5f)));
+            int r = std::min(255, std::max(0, (int)(sumR * invW + 0.5f)));
+            int g = std::min(255, std::max(0, (int)(sumG * invW + 0.5f)));
+            int b = std::min(255, std::max(0, (int)(sumB * invW + 0.5f)));
+
+            newPixels[y * newWidth + x] = (a << 24) | (r << 16) | (g << 8) | b;
+        }
+    }
+
+    if (src->owned) {
+        alignedFree(oldPixels);
+    }
+    src->pixels = newPixels;
+    src->width = newWidth;
+    src->height = newHeight;
+    src->owned = true;
+}
+
 // Anti-Aliasing Box / Area-Averaging Resampler (Stufe B downsampling)
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResizeAreaAverage(
     JNIEnv* env, jclass, jlong handle, jint newWidth, jint newHeight) {

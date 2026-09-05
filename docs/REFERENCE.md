@@ -42,6 +42,14 @@ Resizes the image to target dimensions using native C++ AVX2 SIMD bilinear inter
 
 ---
 
+### `resizeBicubic`
+```java
+public FastImage resizeBicubic(int newWidth, int newHeight)
+```
+Ultra-sharp Catmull-Rom Bicubic spline resampling. Delivers maximum visual fidelity and edge anti-aliasing when scaling graphics or screen captures.
+
+---
+
 ### `resizeAreaAverage`
 ```java
 public FastImage resizeAreaAverage(int targetWidth, int targetHeight)

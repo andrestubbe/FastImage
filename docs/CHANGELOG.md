@@ -1,5 +1,14 @@
 # FastImage Changelog
 
+## [0.1.3] - 2026-09-05
+- **Catmull-Rom Bicubic Resampling Kernel**:
+  - Implemented high-precision `nativeResizeBicubic()` C++ kernel using Catmull-Rom cubic splines.
+  - Added `FastImage.resizeBicubic(int w, int h)` providing supreme edge anti-aliasing and sharpness for high-resolution graphics and video.
+- **Enhanced Anti-Aliasing Suite**:
+  - Unified `resizeBicubic`, `resizeAreaAverage` (box downsampling), and `resize` (bilinear) under FastImage as the central image processing hub for FastJava.
+- **Ecosystem Integration**:
+  - Direct integration target for `FastScreen 0.1.3` visual pipeline and future `FastGPU` compute bridges.
+
 ## [0.1.2] - 2026-09-04
 - **Zero-Copy Native Buffer Wrapping**:
   - Implemented `nativeWrap()` C++ JNI bridge allowing zero-copy instantiation of `FastImage`.
