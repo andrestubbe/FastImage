@@ -1,6 +1,3 @@
-> [!WARNING]
-> **🚧 WIP — Active Memory Architecture Optimization & Hardware SIMD Pipeline Extension in Progress.**
-
 # FastImage 0.1.2 [ALPHA-2026-08] — High-Performance Off-Heap Image Processing for Java
 
 [![Status](https://img.shields.io/badge/status-0.1.2-brightgreen.svg)](https://github.com/andrestubbe/FastImage/releases/tag/0.1.2)
