@@ -1,29 +1,29 @@
-# The Philosophy of FastXXX
+# The Philosophy of FastImage 💡
 
 > [!IMPORTANT]
 > **"Keine Kopien. Niemals. Kritischer JNI-Pfad. Native-First Performance."**
 
-FastXXX is built on the principle that modern Java applications require **native-first** acceleration for performance-critical operations that the standard JVM APIs don't fully optimize.
+FastImage is built on the conviction that 2D image processing, UI blurring, and computer vision pipelines in Java must never be crippled by JVM heap allocations, garbage collection stalls, or slow scalar rasterizers.
 
 ## Core Tenets
 
-1.  **Native-First Execution**
-    Bypass standard Java layers to reach the physical limits of the hardware using hand-tuned C++ and SIMD intrinsics.
+1.  **Native-First SIMD Execution**
+    Bypass standard Java2D and `BufferedImage` software loops to reach physical CPU limits using hand-tuned C++ with 256-bit AVX2 vector intrinsics.
 
-2.  **Zero-Copy JNI Architecture**
-    Minimize JNI transition costs by using direct memory access patterns and avoiding implicit memory copies between the JVM and the native layer.
+2.  **Off-Heap Zero-GC Architecture**
+    Maintain pixel buffers strictly in native unmanaged memory. Zero JVM Garbage Collection pauses even when processing uncompressed 1080p and 4K frames at 60+ FPS.
 
-3.  **Deterministic Latency**
-    Eliminate variance caused by JIT warm-up or garbage collection stalls in critical hot-paths.
+3.  **Zero-Copy Foreign Buffer Interop**
+    Seamlessly wrap raw 64-bit pointers, `FastPointer` handles, and `DirectByteBuffer` allocations from sibling modules (`FastScreen`, `FastCamera`, `FastRobot`) without duplicating memory.
 
-4.  **Hardware-Aware Optimization**
-    Leverage modern CPU features (AVX, SSE, NEON) to process data at hardware-native speeds.
+4.  **Hardware-Grade Filtering Algorithms**
+    Provide modern GPU-grade blur (Dual-Kawase) and box area-average downsampling in native CPU kernels for high-quality UI overlays and downscaling without aliasing artifacts.
 
-5.  **Blueprint Consistency**
-    As part of the **FastJava** ecosystem, FastXXX adheres to a standardized architecture:
-    *   **Native Backend**: Direct C++ implementation.
-    *   **Unified Loading**: Powered by `FastCore`.
-    *   **Premium Quality**: Built for high-performance systems and autonomous agents.
+5.  **FastJava Blueprint Consistency**
+    As part of the **FastJava** ecosystem:
+    *   **Native Backend**: Direct C++ implementation with AVX2 optimizations.
+    *   **Unified Loading**: Powered by `FastCore` for zero-dependency native deployment.
+    *   **Production Quality**: High-performance, clean chaining API, and thorough JMH profiling.
 
 ---
-**⚡ FastXXX — Powering the next generation of Native Java.**
+**⚡ FastImage — Powering the next generation of Native Java.**
