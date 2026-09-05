@@ -50,6 +50,7 @@ public class Demo {
 - [Why FastImage?](#why-fastimage)
 - [Key Features](#key-features)
 - [Real-World Use Cases](#real-world-use-cases)
+- [Architecture & Pipeline](#architecture--pipeline)
 - [Performance Benchmarks](#performance-benchmarks)
 - [API Quick Reference](#api-quick-reference)
 - [Installation](#installation)
@@ -86,6 +87,32 @@ Standard Java `BufferedImage` operations suffer from heavy heap allocation overh
 - 📹 **Live Screen Capture Pipeline**: Downscale and process 1080p/4K video frames from **[FastScreen](https://github.com/andrestubbe/FastScreen)** without GC stutters.
 - 🖼️ **Thumbnail & Preview Generators**: Batch-resize thousands of high-resolution images in web servers and media CMS platforms.
 - 🤖 **Computer Vision Preprocessing**: Normalize, crop, and convert image frames before feeding AI vision models.
+
+---
+
+## Architecture & Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│    Foreign Source (FastScreen / FastCamera / Raw Pointer)   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Zero-Copy wrap() / Direct Native Allocation
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│          Off-Heap Unmanaged Memory Buffer (32-Bit ARGB)     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ 256-Bit AVX2 SIMD Vector Kernels
+                               │ (Dual-Kawase Blur / Bilinear / Area-Average)
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Processed Off-Heap FastImage (0 Bytes GC)         │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Instant Chaining or Zero-Copy Export
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│         Vision Models (ONNX/Vulkan) or BufferedImage        │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
