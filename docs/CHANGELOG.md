@@ -1,5 +1,16 @@
 # FastImage Changelog
 
+## [0.1.2] - 2026-09-04
+- **Zero-Copy Native Buffer Wrapping**:
+  - Implemented `nativeWrap()` C++ JNI bridge allowing zero-copy instantiation of `FastImage`.
+  - Added Java factory methods: `FastImage.wrap(long nativeAddress, int w, int h)`, `FastImage.wrap(Pointer, int w, int h)`, and `FastImage.wrap(ByteBuffer directBuffer, int w, int h)`.
+  - Safe memory ownership model: wrapped instances do not deallocate foreign native pointers on close.
+- **AVX2 Area-Average Anti-Aliasing Downsampler**:
+  - Implemented native `nativeResizeAreaAverage()` box/area-average downscaling kernel in C++ with SIMD integer accumulation.
+  - Added `FastImage.resizeAreaAverage(int targetWidth, int targetHeight)` to eliminate moiré and jagged aliasing artifacts during high-ratio downsampling.
+- **Ecosystem Integration**:
+  - Formed zero-copy bridge target for `FastScreen 0.1.2`, `FastCamera 0.1.1`, and `FastRobot 0.1.1`.
+
 ## [0.1.1] - 2026-08-14
 - Integrated native `FastSIMD` (v0.1.3) AVX2 256-bit vector image processing engine.
 - Added official JMH benchmark suite measuring 19.5 full 1080p frames/sec resize throughput.
