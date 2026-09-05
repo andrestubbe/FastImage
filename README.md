@@ -51,7 +51,6 @@ public class Demo {
 - [Key Features](#key-features)
 - [Real-World Use Cases](#real-world-use-cases)
 - [Performance Benchmarks](#performance-benchmarks)
-- [Architecture Overview](#architecture-overview)
 - [API Quick Reference](#api-quick-reference)
 - [Installation](#installation)
 - [Documentation](#documentation)
@@ -101,19 +100,6 @@ JMH_Image.benchmarkFastImageKawaseBlur thrpt   2  17.942          ops/s
 ```
 
 > **1080p Real-Time Processing (19+ Full Frames / sec)**: `FastImage` resizes 1080p full HD uncompressed image buffers to 720p at **19.5 full operations per second** with **zero JVM Garbage Collection allocations**.
-
----
-
-## Architecture Overview
-
-**FastImage (This Library — Native Image Engine)**  
-Provides SIMD-accelerated image scaling, blur filters, and color transforms.
-
-**[FastSIMD](https://github.com/andrestubbe/FastSIMD) (Hardware Acceleration Engine)**  
-Provides cross-platform hardware SIMD vectorization primitives.
-
-**[FastScreen](https://github.com/andrestubbe/FastScreen) (Zero-Copy DirectX Screen Capture)**  
-Feeds DirectX video frames into `FastImage` for real-time frame processing.
 
 ---
 
