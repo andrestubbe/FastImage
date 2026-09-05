@@ -6,23 +6,25 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
- * FastImage - High-performance off-heap image processing with SIMD
- * acceleration.
+ * FastImage - High-performance off-heap image processing with SIMD acceleration.
  * <p>
  * Stores pixel data in native memory (off-heap) outside JVM garbage collection,
- * providing 10-50× faster image operations than BufferedImage via SSE/AVX SIMD.
+ * providing 10-50× faster image operations than standard Java2D / BufferedImage
+ * via SSE/AVX vector instruction sets.
  * <p>
  * Supported operations:
- * - resize (bilinear, bicubic)
- * - blur (gaussian)
- * - grayscale
- * - brightness/contrast adjustment
- * - flip horizontal/vertical
+ * <ul>
+ *   <li>Resampling: Bilinear, Catmull-Rom Bicubic Spline, Area-Averaging Box downsampling</li>
+ *   <li>Convolutions &amp; Blurs: Box, Gaussian, Stack, Kawase, Dual Kawase, Mipmapped</li>
+ *   <li>Color &amp; Tone: Grayscale (luminance weighted), Brightness, Contrast</li>
+ *   <li>Geometry: Horizontal flip, Vertical flip, Sub-region crop</li>
+ *   <li>Zero-Copy Interop: Native pointers, FastPointer, DirectByteBuffer, BufferedImage</li>
+ * </ul>
  * <p>
- * Memory: Uses ByteBuffer.allocateDirect() - not counted in JVM heap!
+ * Memory Management: Pixel buffers reside in unmanaged off-heap memory. Always invoke
+ * {@link #dispose()} when finished to release native allocations immediately.
  */
 public class FastImage {
 
@@ -30,21 +32,53 @@ public class FastImage {
         FastCore.loadLibrary("fastimage");
     }
 
-    // Native handles
+    // Native state handles
     private long nativeHandle; // Pointer to native FastImage struct
     private int width;
     private int height;
     private boolean disposed = false;
 
+    /**
+     * Private constructor used by static factory methods.
+     */
     private FastImage() {
     }
 
+    // =========================================================================
+    // Factory & Allocation Methods
+    // =========================================================================
+
     /**
-     * Create FastImage from BufferedImage (ARGB format)
+     * Creates an empty FastImage with the given dimensions initialized to black transparent pixels.
+     *
+     * @param width  Image width in pixels (must be &gt; 0).
+     * @param height Image height in pixels (must be &gt; 0).
+     * @return A newly allocated {@link FastImage} instance.
+     * @throws FastImageException If dimensions are invalid or memory allocation fails.
+     */
+    public static FastImage create(int width, int height) {
+        if (width <= 0 || height <= 0) {
+            throw new FastImageException("Invalid dimensions: " + width + "x" + height);
+        }
+        FastImage img = new FastImage();
+        img.width = width;
+        img.height = height;
+        img.nativeHandle = nativeCreateEmpty(width, height);
+        return img;
+    }
+
+    /**
+     * Creates a FastImage by copying pixel data from an existing {@link BufferedImage} (ARGB format).
+     *
+     * @param img Source {@link BufferedImage} to copy from.
+     * @return A newly allocated {@link FastImage} containing a copy of the source pixels.
+     * @throws IllegalArgumentException If {@code img} is null.
+     * @throws FastImageException       If native buffer allocation fails.
      */
     public static FastImage fromBufferedImage(BufferedImage img) {
-        if (img == null)
+        if (img == null) {
             throw new IllegalArgumentException("Image is null");
+        }
 
         int w = img.getWidth();
         int h = img.getHeight();
@@ -72,38 +106,16 @@ public class FastImage {
     }
 
     /**
-     * Create empty FastImage with given dimensions
-     */
-    public static FastImage create(int width, int height) {
-        FastImage img = new FastImage();
-        img.width = width;
-        img.height = height;
-        img.nativeHandle = nativeCreateEmpty(width, height);
-        return img;
-    }
-
-    /**
-     * Internal: Create FastImage from an existing native handle.
-     * The native handle must point to a valid native FastImage struct.
-     */
-    public static FastImage fromNativeHandle(long handle, int width, int height) {
-        if (handle == 0)
-            throw new FastImageException("Native handle is null (0)");
-        FastImage img = new FastImage();
-        img.width = width;
-        img.height = height;
-        img.nativeHandle = handle;
-        return img;
-    }
-
-    /**
-     * Wrap an external native memory pointer (e.g. from FastScreen, FastCamera, or FastSharedMemory)
+     * Wraps an external native memory pointer (e.g. from FastScreen, FastCamera, or FastSharedMemory)
      * as a FastImage with zero-copy.
-     * The underlying memory is NOT freed when this FastImage is disposed or resized.
+     * <p>
+     * <b>Note:</b> The underlying native memory is NOT freed when this FastImage is disposed or resized.
      *
-     * @param rawPointer 64-bit native memory address pointing to ARGB/BGRA pixels
-     * @param width      image width
-     * @param height     image height
+     * @param rawPointer 64-bit native memory address pointing to ARGB/BGRA pixels.
+     * @param width      Image width in pixels (must be &gt; 0).
+     * @param height     Image height in pixels (must be &gt; 0).
+     * @return A {@link FastImage} wrapping the external buffer.
+     * @throws FastImageException If pointer is null (0) or dimensions are invalid.
      */
     public static FastImage wrap(long rawPointer, int width, int height) {
         if (rawPointer == 0L) {
@@ -120,7 +132,13 @@ public class FastImage {
     }
 
     /**
-     * Wrap a FastPointer (e.g. from FastSharedMemory or FastMemory) with zero-copy.
+     * Wraps a {@code fastpointer.Pointer} (e.g. from FastSharedMemory or FastMemory) with zero-copy.
+     *
+     * @param pointer Direct primitive address pointer.
+     * @param width   Image width in pixels (must be &gt; 0).
+     * @param height  Image height in pixels (must be &gt; 0).
+     * @return A {@link FastImage} wrapping the pointer's memory location.
+     * @throws FastImageException If pointer is null, invalid, or dimensions are non-positive.
      */
     public static FastImage wrap(fastpointer.Pointer pointer, int width, int height) {
         if (pointer == null || pointer.isNull()) {
@@ -130,7 +148,13 @@ public class FastImage {
     }
 
     /**
-     * Wrap a DirectByteBuffer (e.g. from FastScreen / FastCamera) with zero-copy.
+     * Wraps a direct {@link ByteBuffer} (e.g. from FastScreen or native captures) with zero-copy.
+     *
+     * @param directBuffer Direct byte buffer containing image pixel data.
+     * @param width        Image width in pixels (must be &gt; 0).
+     * @param height       Image height in pixels (must be &gt; 0).
+     * @return A {@link FastImage} wrapping the direct buffer's address.
+     * @throws FastImageException If buffer is non-direct or reflection fails to extract the address.
      */
     public static FastImage wrap(ByteBuffer directBuffer, int width, int height) {
         if (directBuffer == null || !directBuffer.isDirect()) {
@@ -142,18 +166,42 @@ public class FastImage {
             addressField.setAccessible(true);
             address = addressField.getLong(directBuffer);
         } catch (Exception e) {
-            throw new FastImageException("Failed to extract direct address from ByteBuffer: " + e.getMessage());
+            throw new FastImageException("Failed to extract direct address from ByteBuffer: " + e.getMessage(), e);
         }
         return wrap(address, width, height);
     }
 
-    // === Core Operations ===
+    /**
+     * Internal: Creates a FastImage wrapper from an existing native FastImage struct handle.
+     *
+     * @param handle Pointer to the native FastImage struct.
+     * @param width  Image width in pixels.
+     * @param height Image height in pixels.
+     * @return A {@link FastImage} instance tied to the native struct.
+     * @throws FastImageException If handle is 0.
+     */
+    public static FastImage fromNativeHandle(long handle, int width, int height) {
+        if (handle == 0) {
+            throw new FastImageException("Native handle is null (0)");
+        }
+        FastImage img = new FastImage();
+        img.width = width;
+        img.height = height;
+        img.nativeHandle = handle;
+        return img;
+    }
+
+    // =========================================================================
+    // Geometry & Resampling Operations
+    // =========================================================================
 
     /**
-     * Resize image using bilinear interpolation
+     * Resizes the image using bilinear interpolation.
      *
-     * @param newWidth  target width
-     * @param newHeight target height
+     * @param newWidth  Target width in pixels (must be &gt; 0).
+     * @param newHeight Target height in pixels (must be &gt; 0).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If dimensions are invalid or operation is performed after dispose.
      */
     public FastImage resize(int newWidth, int newHeight) {
         checkDisposed();
@@ -167,12 +215,15 @@ public class FastImage {
     }
 
     /**
-     * Ultra-sharp Catmull-Rom Bicubic Spline Image Resampling.
-     * Yields the highest visual sharpness, smooth gradients, and best anti-aliased edges
-     * for scaling up or down high-definition graphics and screen captures.
+     * Resizes the image using an ultra-sharp Catmull-Rom Bicubic Spline algorithm.
+     * <p>
+     * Delivers maximum visual sharpness, smooth gradients, and anti-aliased edges
+     * when upscaling or downscaling high-definition graphics and screen captures.
      *
-     * @param newWidth  target width
-     * @param newHeight target height
+     * @param newWidth  Target width in pixels (must be &gt; 0).
+     * @param newHeight Target height in pixels (must be &gt; 0).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If dimensions are invalid or operation is performed after dispose.
      */
     public FastImage resizeBicubic(int newWidth, int newHeight) {
         checkDisposed();
@@ -186,12 +237,15 @@ public class FastImage {
     }
 
     /**
-     * High-quality Anti-Aliasing Box / Area-Averaging Downsampling.
-     * Computes the weighted average of all source pixels covering each target pixel.
-     * Eliminates shimmering and pixel crawling when scaling down high-resolution screens or camera feeds.
+     * Downsamples the image using an Anti-Aliasing Area-Averaging Box filter.
+     * <p>
+     * Computes the weighted average of all source pixels intersecting each target pixel.
+     * Completely eliminates shimmering and pixel-crawling artifacts on high-resolution streams.
      *
-     * @param newWidth  target width
-     * @param newHeight target height
+     * @param newWidth  Target width in pixels (must be &gt; 0).
+     * @param newHeight Target height in pixels (must be &gt; 0).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If dimensions are invalid or operation is performed after dispose.
      */
     public FastImage resizeAreaAverage(int newWidth, int newHeight) {
         checkDisposed();
@@ -205,146 +259,16 @@ public class FastImage {
     }
 
     /**
-     * Fast box blur - quickest approximation.
-     * Good for real-time effects where speed matters.
+     * Crops the image to the specified rectangular sub-region.
+     * Creates and returns a new {@link FastImage}, leaving the original image unmodified.
      *
-     * @param radius blur radius (0-50)
-     */
-    public FastImage blurBox(float radius) {
-        checkDisposed();
-        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
-        if (radius == 0) return this;
-        nativeBlurBox(nativeHandle, radius);
-        return this;
-    }
-
-    /**
-     * Separable Gaussian blur - high quality, smooth results.
-     * Slower than box blur but looks much better.
-     *
-     * @param radius blur radius (0-50)
-     */
-    public FastImage blurGaussian(float radius) {
-        checkDisposed();
-        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
-        if (radius == 0) return this;
-        nativeBlurGaussian(nativeHandle, radius);
-        return this;
-    }
-
-    /**
-     * Stack blur - CSS backdrop-filter quality.
-     * Best balance of speed and quality for UI effects.
-     *
-     * @param radius blur radius (0-100)
-     */
-    public FastImage blurStack(float radius) {
-        checkDisposed();
-        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
-        if (radius == 0) return this;
-        nativeBlurStack(nativeHandle, radius);
-        return this;
-    }
-
-    /**
-     * Kawase blur - multi-pass blur used by Apple/Google.
-     * Very soft edges with configurable quality.
-     *
-     * @param radius blur radius (0-50)
-     * @param passes number of passes (1-5, higher = softer)
-     */
-    public FastImage blurKawase(float radius, int passes) {
-        checkDisposed();
-        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
-        if (passes < 1 || passes > 10) throw new FastImageException("Invalid passes: " + passes);
-        nativeBlurKawase(nativeHandle, radius, passes);
-        return this;
-    }
-
-    /**
-     * Dual Kawase blur - premium 2-pass algorithm.
-     * Best quality with excellent performance.
-     *
-     * @param radius blur radius (0-50)
-     */
-    public FastImage blurDualKawase(float radius) {
-        checkDisposed();
-        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
-        nativeBlurDualKawase(nativeHandle, radius);
-        return this;
-    }
-
-    /**
-     * Mipmapped blur - for very large blur radii (100+).
-     * Uses downscaling + small blur + upscaling.
-     *
-     * @param radius blur radius (0-200)
-     */
-    public FastImage blurMipmapped(float radius) {
-        checkDisposed();
-        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
-        nativeBlurMipmapped(nativeHandle, radius);
-        return this;
-    }
-
-    /**
-     * Convert to grayscale
-     */
-    public FastImage grayscale() {
-        checkDisposed();
-        nativeGrayscale(nativeHandle);
-        return this;
-    }
-
-    /**
-     * Adjust brightness
-     *
-     * @param factor 0.0 = black, 1.0 = unchanged, 2.0 = double brightness
-     */
-    public FastImage adjustBrightness(float factor) {
-        checkDisposed();
-        if (factor < 0) throw new FastImageException("Factor cannot be negative: " + factor);
-        nativeBrightness(nativeHandle, factor);
-        return this;
-    }
-
-    /**
-     * Adjust contrast
-     *
-     * @param factor 0.0 = gray, 1.0 = unchanged, 2.0 = double contrast
-     */
-    public FastImage adjustContrast(float factor) {
-        checkDisposed();
-        if (factor < 0) throw new FastImageException("Factor cannot be negative: " + factor);
-        nativeContrast(nativeHandle, factor);
-        return this;
-    }
-
-    /**
-     * Flip image horizontally
-     */
-    public FastImage flipHorizontal() {
-        checkDisposed();
-        nativeFlipH(nativeHandle);
-        return this;
-    }
-
-    /**
-     * Flip image vertically
-     */
-    public FastImage flipVertical() {
-        checkDisposed();
-        nativeFlipV(nativeHandle);
-        return this;
-    }
-
-    /**
-     * Crop image to region (creates new FastImage, leaves original)
-     *
-     * @param x left coordinate
-     * @param y top coordinate
-     * @param w width
-     * @param h height
+     * @param x Left coordinate (must be &gt;= 0).
+     * @param y Top coordinate (must be &gt;= 0).
+     * @param w Width of the cropped region (must be &gt; 0).
+     * @param h Height of the cropped region (must be &gt; 0).
+     * @return A newly allocated {@link FastImage} containing the cropped region.
+     * @throws IllegalArgumentException If crop bounds exceed image boundaries.
+     * @throws FastImageException       If the image has been disposed.
      */
     public FastImage crop(int x, int y, int w, int h) {
         checkDisposed();
@@ -358,10 +282,180 @@ public class FastImage {
         return cropped;
     }
 
-    // === Conversion ===
+    /**
+     * Flips the image horizontally across its vertical axis.
+     *
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If the image has been disposed.
+     */
+    public FastImage flipHorizontal() {
+        checkDisposed();
+        nativeFlipH(nativeHandle);
+        return this;
+    }
 
     /**
-     * Convert to BufferedImage (TYPE_INT_ARGB)
+     * Flips the image vertically across its horizontal axis.
+     *
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If the image has been disposed.
+     */
+    public FastImage flipVertical() {
+        checkDisposed();
+        nativeFlipV(nativeHandle);
+        return this;
+    }
+
+    // =========================================================================
+    // Blur & Convolution Filters
+    // =========================================================================
+
+    /**
+     * Applies a fast box blur kernel.
+     * Good for real-time effects where processing speed is critical.
+     *
+     * @param radius Blur radius in pixels (range: 0 to 50).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If radius is negative or image is disposed.
+     */
+    public FastImage blurBox(float radius) {
+        checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (radius == 0) return this;
+        nativeBlurBox(nativeHandle, radius);
+        return this;
+    }
+
+    /**
+     * Applies a high-quality separable Gaussian blur.
+     * Produces smooth, artifact-free results at slightly higher compute cost than box blur.
+     *
+     * @param radius Blur radius in pixels (range: 0 to 50).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If radius is negative or image is disposed.
+     */
+    public FastImage blurGaussian(float radius) {
+        checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (radius == 0) return this;
+        nativeBlurGaussian(nativeHandle, radius);
+        return this;
+    }
+
+    /**
+     * Applies a stack blur (CSS {@code backdrop-filter} grade).
+     * Delivers an ideal compromise between visual smoothness and high framerate for UI glass effects.
+     *
+     * @param radius Blur radius in pixels (range: 0 to 100).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If radius is negative or image is disposed.
+     */
+    public FastImage blurStack(float radius) {
+        checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (radius == 0) return this;
+        nativeBlurStack(nativeHandle, radius);
+        return this;
+    }
+
+    /**
+     * Applies a multi-pass Kawase blur filter (as used in Apple and Google UI designs).
+     *
+     * @param radius Blur radius in pixels (range: 0 to 50).
+     * @param passes Number of ping-pong passes (range: 1 to 10; higher = softer).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If parameters are out of range or image is disposed.
+     */
+    public FastImage blurKawase(float radius, int passes) {
+        checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        if (passes < 1 || passes > 10) throw new FastImageException("Invalid passes: " + passes);
+        nativeBlurKawase(nativeHandle, radius, passes);
+        return this;
+    }
+
+    /**
+     * Applies a premium Dual Kawase 2-pass blur algorithm.
+     *
+     * @param radius Blur radius in pixels (range: 0 to 50).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If radius is negative or image is disposed.
+     */
+    public FastImage blurDualKawase(float radius) {
+        checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        nativeBlurDualKawase(nativeHandle, radius);
+        return this;
+    }
+
+    /**
+     * Applies a mipmapped blur for very large radii (100+ pixels) by combining downscaling and upscaling.
+     *
+     * @param radius Blur radius in pixels (range: 0 to 200).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If radius is negative or image is disposed.
+     */
+    public FastImage blurMipmapped(float radius) {
+        checkDisposed();
+        if (radius < 0) throw new FastImageException("Radius cannot be negative: " + radius);
+        nativeBlurMipmapped(nativeHandle, radius);
+        return this;
+    }
+
+    // =========================================================================
+    // Color & Tone Adjustments
+    // =========================================================================
+
+    /**
+     * Converts the image to grayscale using ITU-R BT.601 perceptual luminance weighting.
+     *
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If the image has been disposed.
+     */
+    public FastImage grayscale() {
+        checkDisposed();
+        nativeGrayscale(nativeHandle);
+        return this;
+    }
+
+    /**
+     * Adjusts the brightness of all color channels.
+     *
+     * @param factor Brightness multiplier (0.0 = black, 1.0 = unchanged, 2.0 = double brightness).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If factor is negative or image is disposed.
+     */
+    public FastImage adjustBrightness(float factor) {
+        checkDisposed();
+        if (factor < 0) throw new FastImageException("Factor cannot be negative: " + factor);
+        nativeBrightness(nativeHandle, factor);
+        return this;
+    }
+
+    /**
+     * Adjusts the contrast of the image.
+     *
+     * @param factor Contrast multiplier (0.0 = solid 50% gray, 1.0 = unchanged, 2.0 = high contrast).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If factor is negative or image is disposed.
+     */
+    public FastImage adjustContrast(float factor) {
+        checkDisposed();
+        if (factor < 0) throw new FastImageException("Factor cannot be negative: " + factor);
+        nativeContrast(nativeHandle, factor);
+        return this;
+    }
+
+    // =========================================================================
+    // Export & Interop
+    // =========================================================================
+
+    /**
+     * Copies and converts the native off-heap pixel buffer into a standard Java2D {@link BufferedImage}
+     * of type {@link BufferedImage#TYPE_INT_ARGB}.
+     *
+     * @return A newly created {@link BufferedImage} reflecting current pixel state.
+     * @throws FastImageException If the image has been disposed.
      */
     public BufferedImage toBufferedImage() {
         checkDisposed();
@@ -376,7 +470,10 @@ public class FastImage {
     }
 
     /**
-     * Get raw pixel array (ARGB format) - creates copy
+     * Copies the native off-heap pixel data into a newly allocated Java {@code int[]} array in ARGB format.
+     *
+     * @return A new {@code int[]} array containing packed 32-bit ARGB pixels.
+     * @throws FastImageException If the image has been disposed.
      */
     public int[] getPixels() {
         checkDisposed();
@@ -385,8 +482,13 @@ public class FastImage {
         return pixels;
     }
 
+    // =========================================================================
+    // Lifecycle & State Inspection
+    // =========================================================================
+
     /**
-     * Free native memory
+     * Releases unmanaged native memory allocations associated with this instance immediately.
+     * Calling methods on a disposed image will throw an {@link IllegalStateException}.
      */
     public void dispose() {
         if (!disposed && nativeHandle != 0) {
@@ -396,31 +498,52 @@ public class FastImage {
         }
     }
 
-    // === Getters ===
+    /**
+     * Checks whether this image has been disposed.
+     *
+     * @return {@code true} if the image was disposed and native resources were freed, {@code false} otherwise.
+     */
+    public boolean isDisposed() {
+        return disposed;
+    }
 
+    /**
+     * Gets the current image width in pixels.
+     *
+     * @return Image width.
+     */
     public int getWidth() {
         return width;
     }
 
+    /**
+     * Gets the current image height in pixels.
+     *
+     * @return Image height.
+     */
     public int getHeight() {
         return height;
     }
 
     /**
-     * Internal: Returns the raw pointer to the native FastImage struct.
+     * Returns the raw 64-bit native memory address to the underlying FastImage C++ struct.
      * Use with caution.
+     *
+     * @return Native struct pointer address.
      */
     public long getNativeHandle() {
         return nativeHandle;
     }
 
-
     private void checkDisposed() {
-        if (disposed)
+        if (disposed) {
             throw new IllegalStateException("FastImage has been disposed");
+        }
     }
 
-    // === Native Methods ===
+    // =========================================================================
+    // Native JNI Bindings
+    // =========================================================================
 
     private static native long nativeCreate(int width, int height, int[] pixels);
 
@@ -462,3 +585,4 @@ public class FastImage {
 
     private static native void nativeGetPixels(long handle, int[] pixels);
 }
+
