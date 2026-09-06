@@ -56,7 +56,7 @@ if exist "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" (
 
 if not exist build mkdir build
 
-cl.exe /O2 /arch:AVX2 /D_CRT_SECURE_NO_WARNINGS /W3 /MD /EHsc /LD ^
+cl.exe /O2 /arch:AVX2 /openmp /D_CRT_SECURE_NO_WARNINGS /W3 /MD /EHsc /LD ^
    /I "%JAVA_HOME%\include" ^
    /I "%JAVA_HOME%\include\win32" ^
    /Fo:build\ ^
@@ -70,8 +70,10 @@ if %ERRORLEVEL% == 0 (
     copy build\fastimage.dll src\main\resources\native\fastimage.dll /Y
     copy build\fastimage.dll src\main\resources\win32-x86-64\fastimage.dll /Y
     copy build\fastimage.dll target\classes\native\fastimage.dll /Y 2>nul
+    if not exist "%USERPROFILE%\.fastcore\native\fastimage" mkdir "%USERPROFILE%\.fastcore\native\fastimage"
+    copy build\fastimage.dll "%USERPROFILE%\.fastcore\native\fastimage\fastimage.dll" /Y
     echo.
-    echo [SUCCESS] DLL built and copied to resources!
+    echo [SUCCESS] DLL built and copied to resources and fastcore cache!
 ) else (
     echo.
     echo [FAILED] Compilation failed.

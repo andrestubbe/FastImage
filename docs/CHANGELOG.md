@@ -1,5 +1,15 @@
 # FastImage Changelog
 
+## [0.1.4] - 2026-09-06
+- **Nearest Neighbor Resampling**:
+  - Implemented `nativeResizeNearest()` C++ kernel and exposed `FastImage.resizeNearest(int w, int h)` for ultra-fast point sampling and retro rendering.
+  - Added export to `FastImage.def`.
+- **OpenMP Multi-Core Scaling Optimization**:
+  - Multi-threaded `nativeResizeAreaAverage()` using dynamic chunked OpenMP loops (`#pragma omp parallel for schedule(dynamic, 16)`).
+  - Massive throughput improvement for high-FPS Area-Average downscaling pipelines.
+- **Library Distribution**:
+  - Automated deployment of compiled DLL to `~/.fastcore/native/fastimage/` in `compile.bat`.
+
 ## [0.1.3] - 2026-09-05
 - **Catmull-Rom Bicubic Resampling Kernel**:
   - Implemented high-precision `nativeResizeBicubic()` C++ kernel using Catmull-Rom cubic splines.

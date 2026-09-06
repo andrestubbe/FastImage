@@ -19,6 +19,7 @@
 #include <immintrin.h>
 #include <cstring>
 #include <intrin.h> // For __cpuid
+#include <omp.h>
 
 // Helper to throw Java exceptions
 void throwFastImageException(JNIEnv* env, const char* message) {
@@ -383,26 +384,34 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResize(
     int* newPixels = alignedAlloc(newWidth * newHeight);
     float xRatio = (float)(oldW - 1) / newWidth;
     float yRatio = (float)(oldH - 1) / newHeight;
+
+    #pragma omp parallel for schedule(static)
     for (int y = 0; y < newHeight; y++) {
+        float py = y * yRatio;
+        int y1 = (int)py;
+        int y2 = y1 + 1 < oldH ? y1 + 1 : y1;
+        float fy = py - y1;
+        const int* row1 = oldPixels + y1 * oldW;
+        const int* row2 = oldPixels + y2 * oldW;
+        int* dstRow = newPixels + y * newWidth;
+
         for (int x = 0; x < newWidth; x++) {
             float px = x * xRatio;
-            float py = y * yRatio;
             int x1 = (int)px;
-            int y1 = (int)py;
             int x2 = x1 + 1 < oldW ? x1 + 1 : x1;
-            int y2 = y1 + 1 < oldH ? y1 + 1 : y1;
             float fx = px - x1;
-            float fy = py - y1;
-            int p11 = oldPixels[y1 * oldW + x1];
-            int p12 = oldPixels[y1 * oldW + x2];
-            int p21 = oldPixels[y2 * oldW + x1];
-            int p22 = oldPixels[y2 * oldW + x2];
+
+            int p11 = row1[x1];
+            int p12 = row1[x2];
+            int p21 = row2[x1];
+            int p22 = row2[x2];
+
             auto lerp = [](int c1, int c2, float f) -> int { return (int)(c1 + f * (c2 - c1)); };
             int a = lerp(lerp((p11 >> 24) & 0xFF, (p12 >> 24) & 0xFF, fx), lerp((p21 >> 24) & 0xFF, (p22 >> 24) & 0xFF, fx), fy);
             int r = lerp(lerp((p11 >> 16) & 0xFF, (p12 >> 16) & 0xFF, fx), lerp((p21 >> 16) & 0xFF, (p22 >> 16) & 0xFF, fx), fy);
             int g = lerp(lerp((p11 >> 8) & 0xFF, (p12 >> 8) & 0xFF, fx), lerp((p21 >> 8) & 0xFF, (p22 >> 8) & 0xFF, fx), fy);
             int b = lerp(lerp(p11 & 0xFF, p12 & 0xFF, fx), lerp(p21 & 0xFF, p22 & 0xFF, fx), fy);
-            newPixels[y * newWidth + x] = (a << 24) | (r << 16) | (g << 8) | b;
+            dstRow[x] = (a << 24) | (r << 16) | (g << 8) | b;
         }
     }
     if (src->owned) {
@@ -412,6 +421,40 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResize(
     src->width = newWidth;
     src->height = newHeight;
     src->owned = true; // Now we own the newly allocated buffer
+}
+
+// Ultra-Fast Nearest Neighbor (Point) Resampler
+JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResizeNearest(
+    JNIEnv* env, jclass, jlong handle, jint newWidth, jint newHeight) {
+    if (handle == 0) { throwFastImageException(env, "Native handle is null"); return; }
+    FastImage* src = (FastImage*)handle;
+    int oldW = src->width;
+    int oldH = src->height;
+    int* oldPixels = src->pixels;
+    int* newPixels = alignedAlloc(newWidth * newHeight);
+    float xRatio = (float)oldW / newWidth;
+    float yRatio = (float)oldH / newHeight;
+
+    #pragma omp parallel for schedule(static)
+    for (int y = 0; y < newHeight; y++) {
+        int srcY = (int)(y * yRatio);
+        if (srcY >= oldH) srcY = oldH - 1;
+        const int* srcRow = oldPixels + srcY * oldW;
+        int* dstRow = newPixels + y * newWidth;
+
+        for (int x = 0; x < newWidth; x++) {
+            int srcX = (int)(x * xRatio);
+            if (srcX >= oldW) srcX = oldW - 1;
+            dstRow[x] = srcRow[srcX];
+        }
+    }
+    if (src->owned) {
+        alignedFree(oldPixels);
+    }
+    src->pixels = newPixels;
+    src->width = newWidth;
+    src->height = newHeight;
+    src->owned = true;
 }
 
 // High-Precision Bicubic (Catmull-Rom spline) Image Resampling Kernel
@@ -425,6 +468,32 @@ static inline float catmullRom(float x) {
     return 0.0f;
 }
 
+struct ResampleWeights {
+    int indices[4];
+    float weights[4];
+};
+
+static void computeWeights(int oldSize, int newSize, std::vector<ResampleWeights>& out) {
+    out.resize(newSize);
+    float scale = (float)oldSize / newSize;
+    for (int i = 0; i < newSize; i++) {
+        float srcPos = (i + 0.5f) * scale - 0.5f;
+        int i0 = (int)floorf(srcPos);
+        float totalW = 0.0f;
+        for (int k = 0; k < 4; k++) {
+            int idx = i0 - 1 + k;
+            out[i].indices[k] = std::max(0, std::min(oldSize - 1, idx));
+            float w = catmullRom(srcPos - idx);
+            out[i].weights[k] = w;
+            totalW += w;
+        }
+        float inv = (totalW != 0.0f) ? (1.0f / totalW) : 1.0f;
+        for (int k = 0; k < 4; k++) {
+            out[i].weights[k] *= inv;
+        }
+    }
+}
+
 JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResizeBicubic(
     JNIEnv* env, jclass, jlong handle, jint newWidth, jint newHeight) {
     if (handle == 0) { throwFastImageException(env, "Native handle is null"); return; }
@@ -432,52 +501,100 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResizeBicubic(
     int oldW = src->width;
     int oldH = src->height;
     int* oldPixels = src->pixels;
-    int* newPixels = alignedAlloc(newWidth * newHeight);
 
-    float scaleX = (float)oldW / newWidth;
-    float scaleY = (float)oldH / newHeight;
+    if (newWidth <= 0 || newHeight <= 0) {
+        throwFastImageException(env, "Invalid dimensions");
+        return;
+    }
 
-    for (int y = 0; y < newHeight; y++) {
-        float srcY = (y + 0.5f) * scaleY - 0.5f;
-        int y0 = (int)floorf(srcY);
+    // 1. Precompute 1D weights for X and Y
+    std::vector<ResampleWeights> xWeights;
+    std::vector<ResampleWeights> yWeights;
+    computeWeights(oldW, newWidth, xWeights);
+    computeWeights(oldH, newHeight, yWeights);
 
+    // 2. Intermediate buffer for separable horizontal pass: (newWidth x oldH)
+    // Interleaved RGBA channels packed in 32-bit words (0-255)
+    int* tempPixels = alignedAlloc(newWidth * oldH);
+
+    // Horizontal pass: parallel across rows (oldH)
+    #pragma omp parallel for schedule(static)
+    for (int y = 0; y < oldH; y++) {
+        const int* srcRow = oldPixels + y * oldW;
+        int rowOffset = y * newWidth;
         for (int x = 0; x < newWidth; x++) {
-            float srcX = (x + 0.5f) * scaleX - 0.5f;
-            int x0 = (int)floorf(srcX);
+            const ResampleWeights& xw = xWeights[x];
+            int p0 = srcRow[xw.indices[0]];
+            int p1 = srcRow[xw.indices[1]];
+            int p2 = srcRow[xw.indices[2]];
+            int p3 = srcRow[xw.indices[3]];
 
-            float totalWeight = 0.0f;
-            float sumA = 0.0f, sumR = 0.0f, sumG = 0.0f, sumB = 0.0f;
+            float a = ((p0 >> 24) & 0xFF) * xw.weights[0] +
+                      ((p1 >> 24) & 0xFF) * xw.weights[1] +
+                      ((p2 >> 24) & 0xFF) * xw.weights[2] +
+                      ((p3 >> 24) & 0xFF) * xw.weights[3];
 
-            for (int dy = -1; dy <= 2; dy++) {
-                int sy = y0 + dy;
-                int clampedY = std::max(0, std::min(oldH - 1, sy));
-                float wy = catmullRom(srcY - sy);
-                const int* row = oldPixels + clampedY * oldW;
+            float r = ((p0 >> 16) & 0xFF) * xw.weights[0] +
+                      ((p1 >> 16) & 0xFF) * xw.weights[1] +
+                      ((p2 >> 16) & 0xFF) * xw.weights[2] +
+                      ((p3 >> 16) & 0xFF) * xw.weights[3];
 
-                for (int dx = -1; dx <= 2; dx++) {
-                    int sx = x0 + dx;
-                    int clampedX = std::max(0, std::min(oldW - 1, sx));
-                    float wx = catmullRom(srcX - sx);
-                    float w = wx * wy;
+            float g = ((p0 >> 8) & 0xFF) * xw.weights[0] +
+                      ((p1 >> 8) & 0xFF) * xw.weights[1] +
+                      ((p2 >> 8) & 0xFF) * xw.weights[2] +
+                      ((p3 >> 8) & 0xFF) * xw.weights[3];
 
-                    totalWeight += w;
-                    int p = row[clampedX];
-                    sumA += ((p >> 24) & 0xFF) * w;
-                    sumR += ((p >> 16) & 0xFF) * w;
-                    sumG += ((p >> 8) & 0xFF) * w;
-                    sumB += (p & 0xFF) * w;
-                }
-            }
+            float b = (p0 & 0xFF) * xw.weights[0] +
+                      (p1 & 0xFF) * xw.weights[1] +
+                      (p2 & 0xFF) * xw.weights[2] +
+                      (p3 & 0xFF) * xw.weights[3];
 
-            float invW = (totalWeight != 0.0f) ? (1.0f / totalWeight) : 1.0f;
-            int a = std::min(255, std::max(0, (int)(sumA * invW + 0.5f)));
-            int r = std::min(255, std::max(0, (int)(sumR * invW + 0.5f)));
-            int g = std::min(255, std::max(0, (int)(sumG * invW + 0.5f)));
-            int b = std::min(255, std::max(0, (int)(sumB * invW + 0.5f)));
+            int ia = std::min(255, std::max(0, (int)(a + 0.5f)));
+            int ir = std::min(255, std::max(0, (int)(r + 0.5f)));
+            int ig = std::min(255, std::max(0, (int)(g + 0.5f)));
+            int ib = std::min(255, std::max(0, (int)(b + 0.5f)));
 
-            newPixels[y * newWidth + x] = (a << 24) | (r << 16) | (g << 8) | b;
+            tempPixels[rowOffset + x] = (ia << 24) | (ir << 16) | (ig << 8) | ib;
         }
     }
+
+    // Vertical pass: produce final newWidth x newHeight
+    int* newPixels = alignedAlloc(newWidth * newHeight);
+
+    #pragma omp parallel for schedule(static)
+    for (int y = 0; y < newHeight; y++) {
+        const ResampleWeights& yw = yWeights[y];
+        const int* r0 = tempPixels + yw.indices[0] * newWidth;
+        const int* r1 = tempPixels + yw.indices[1] * newWidth;
+        const int* r2 = tempPixels + yw.indices[2] * newWidth;
+        const int* r3 = tempPixels + yw.indices[3] * newWidth;
+        float w0 = yw.weights[0];
+        float w1 = yw.weights[1];
+        float w2 = yw.weights[2];
+        float w3 = yw.weights[3];
+
+        int* dstRow = newPixels + y * newWidth;
+        for (int x = 0; x < newWidth; x++) {
+            int p0 = r0[x];
+            int p1 = r1[x];
+            int p2 = r2[x];
+            int p3 = r3[x];
+
+            float a = ((p0 >> 24) & 0xFF) * w0 + ((p1 >> 24) & 0xFF) * w1 + ((p2 >> 24) & 0xFF) * w2 + ((p3 >> 24) & 0xFF) * w3;
+            float r = ((p0 >> 16) & 0xFF) * w0 + ((p1 >> 16) & 0xFF) * w1 + ((p2 >> 16) & 0xFF) * w2 + ((p3 >> 16) & 0xFF) * w3;
+            float g = ((p0 >> 8) & 0xFF) * w0 + ((p1 >> 8) & 0xFF) * w1 + ((p2 >> 8) & 0xFF) * w2 + ((p3 >> 8) & 0xFF) * w3;
+            float b = (p0 & 0xFF) * w0 + (p1 & 0xFF) * w1 + (p2 & 0xFF) * w2 + (p3 & 0xFF) * w3;
+
+            int ia = std::min(255, std::max(0, (int)(a + 0.5f)));
+            int ir = std::min(255, std::max(0, (int)(r + 0.5f)));
+            int ig = std::min(255, std::max(0, (int)(g + 0.5f)));
+            int ib = std::min(255, std::max(0, (int)(b + 0.5f)));
+
+            dstRow[x] = (ia << 24) | (ir << 16) | (ig << 8) | ib;
+        }
+    }
+
+    alignedFree(tempPixels);
 
     if (src->owned) {
         alignedFree(oldPixels);
@@ -501,6 +618,7 @@ JNIEXPORT void JNICALL Java_fastimage_FastImage_nativeResizeAreaAverage(
     float scaleX = (float)oldW / newWidth;
     float scaleY = (float)oldH / newHeight;
 
+    #pragma omp parallel for schedule(dynamic, 16)
     for (int y = 0; y < newHeight; y++) {
         float srcY0 = y * scaleY;
         float srcY1 = (y + 1) * scaleY;

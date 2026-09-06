@@ -5,6 +5,7 @@ EXPORTS
     Java_fastimage_FastImage_nativeWrap
     Java_fastimage_FastImage_nativeDispose
     Java_fastimage_FastImage_nativeResize
+    Java_fastimage_FastImage_nativeResizeNearest
     Java_fastimage_FastImage_nativeResizeBicubic
     Java_fastimage_FastImage_nativeResizeAreaAverage
     Java_fastimage_FastImage_nativeBlurBox

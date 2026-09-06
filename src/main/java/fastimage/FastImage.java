@@ -106,6 +106,35 @@ public class FastImage {
     }
 
     /**
+     * Creates a FastImage directly from an existing pixel array (ARGB/RGB format)
+     * without any {@link BufferedImage} wrapping or Java2D color model conversion overhead.
+     *
+     * @param pixels Source pixel array containing packed 32-bit integers.
+     * @param width  Image width in pixels (must be &gt; 0).
+     * @param height Image height in pixels (must be &gt; 0).
+     * @return A newly allocated {@link FastImage} containing a native copy of the pixels.
+     * @throws IllegalArgumentException If {@code pixels} is null or length is insufficient.
+     * @throws FastImageException       If dimensions are invalid or memory allocation fails.
+     */
+    public static FastImage fromPixels(int[] pixels, int width, int height) {
+        if (pixels == null) {
+            throw new IllegalArgumentException("Pixel array is null");
+        }
+        if (width <= 0 || height <= 0) {
+            throw new FastImageException("Invalid dimensions: " + width + "x" + height);
+        }
+        if (pixels.length < width * height) {
+            throw new IllegalArgumentException("Pixel array too small for dimensions: " + pixels.length + " < " + (width * height));
+        }
+
+        FastImage fastImg = new FastImage();
+        fastImg.width = width;
+        fastImg.height = height;
+        fastImg.nativeHandle = nativeCreate(width, height, pixels);
+        return fastImg;
+    }
+
+    /**
      * Wraps an external native memory pointer (e.g. from FastScreen, FastCamera, or FastSharedMemory)
      * as a FastImage with zero-copy.
      * <p>
@@ -209,6 +238,25 @@ public class FastImage {
             throw new FastImageException("Invalid dimensions: " + newWidth + "x" + newHeight);
         }
         nativeResize(nativeHandle, newWidth, newHeight);
+        this.width = newWidth;
+        this.height = newHeight;
+        return this;
+    }
+
+    /**
+     * Resizes the image using nearest-neighbor (point) sampling.
+     *
+     * @param newWidth  Target width in pixels (must be &gt; 0).
+     * @param newHeight Target height in pixels (must be &gt; 0).
+     * @return This {@link FastImage} instance for method chaining.
+     * @throws FastImageException If dimensions are invalid or operation is performed after dispose.
+     */
+    public FastImage resizeNearest(int newWidth, int newHeight) {
+        checkDisposed();
+        if (newWidth <= 0 || newHeight <= 0) {
+            throw new FastImageException("Invalid dimensions: " + newWidth + "x" + newHeight);
+        }
+        nativeResizeNearest(nativeHandle, newWidth, newHeight);
         this.width = newWidth;
         this.height = newHeight;
         return this;
@@ -482,6 +530,20 @@ public class FastImage {
         return pixels;
     }
 
+    /**
+     * Copies the native off-heap pixel data into a pre-allocated Java {@code int[]} array in ARGB format (0 GC allocations).
+     *
+     * @param destination Array with length >= width * height.
+     * @throws FastImageException If image is disposed or destination array is too small.
+     */
+    public void getPixels(int[] destination) {
+        checkDisposed();
+        if (destination == null || destination.length < width * height) {
+            throw new FastImageException("Destination array is null or smaller than image dimensions");
+        }
+        nativeGetPixels(nativeHandle, destination);
+    }
+
     // =========================================================================
     // Lifecycle & State Inspection
     // =========================================================================
@@ -554,6 +616,8 @@ public class FastImage {
     private static native void nativeDispose(long handle);
 
     private static native void nativeResize(long handle, int newWidth, int newHeight);
+
+    private static native void nativeResizeNearest(long handle, int newWidth, int newHeight);
 
     private static native void nativeResizeBicubic(long handle, int newWidth, int newHeight);
 
