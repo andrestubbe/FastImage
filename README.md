@@ -115,28 +115,64 @@ Standard Java `BufferedImage` operations suffer from heavy heap allocation overh
 
 ## Performance Benchmarks
 
-In the official [JMH Benchmark](examples/Benchmark), `FastImage` measured throughput for full 1080p (1920x1080) frame processing:
+In the official [JMH Benchmark](examples/Benchmark), `FastImage` measured throughput for full 1080p (1920×1080) to 720p (1280×720) frame processing:
 
 ```text
-Benchmark                              Mode  Cnt   Score   Error  Units
-JMH_Image.benchmarkFastImageResize    thrpt    2  19.521          ops/s
-JMH_Image.benchmarkFastImageKawaseBlur thrpt   2  17.942          ops/s
+Benchmark                                       Mode  Cnt    Score   Units
+Benchmark.benchmarkFastImageResizeNearest      thrpt    2  642.614   ops/s
+Benchmark.benchmarkFastImageResizeAreaAverage  thrpt    2  199.345   ops/s
+Benchmark.benchmarkFastImageResizeBilinear     thrpt    2  127.117   ops/s
+Benchmark.benchmarkFastImageResizeBicubic      thrpt    2   37.105   ops/s
+Benchmark.benchmarkFastImageKawaseBlur         thrpt    2   24.451   ops/s
 ```
 
 > [!NOTE]
-> **Environment & Setup**: Measured on an Intel Core i7 with Windows 11. `FastImage` resizes 1080p full HD uncompressed image buffers to 720p at **19.5+ full operations per second** with **zero JVM Garbage Collection allocations**.
+> **Environment & Setup**: Measured on an 11th Gen Intel Core i5-1135G7 (Microsoft Surface Pro 8) running Windows 11 with JDK 21. `FastImage` processes full 1080p uncompressed frames at up to **640+ operations per second** (Point) and **199+ operations per second** (OpenMP-accelerated Area-Average Anti-Aliasing) with **zero JVM Garbage Collection allocations**.
 
 ---
 
 ## API Quick Reference
 
+### Factory & Memory Wrapping
 | Method | Description | Path |
 |--------|-------------|------|
-| `create(width, height)` | Creates an off-heap `FastImage` instance. | [Reference 📖](docs/REFERENCE.md#create) |
-| `resize(newW, newH)` | AVX2 SIMD bilinear image scaling. | [Reference 📖](docs/REFERENCE.md#resize) |
+| `create(width, height)` | Allocates an unmanaged off-heap ARGB pixel buffer. | [Reference 📖](docs/REFERENCE.md#create) |
+| `fromBufferedImage(image)` | Converts a Java `BufferedImage` to `FastImage`. | [Reference 📖](docs/REFERENCE.md#frombufferedimage) |
+| `fromPixels(pixels, width, height)` | Creates an instance directly from an `int[]` array. | [Reference 📖](docs/REFERENCE.md#frompixels) |
+| `wrap(address, width, height)` | Zero-copy wrap of raw native 64-bit address. | [Reference 📖](docs/REFERENCE.md#wrap) |
+| `wrap(Pointer, width, height)` | Zero-copy wrap of a `FastPointer` handle. | [Reference 📖](docs/REFERENCE.md#wrap) |
+| `wrap(ByteBuffer, width, height)` | Zero-copy wrap of a direct `java.nio.ByteBuffer`. | [Reference 📖](docs/REFERENCE.md#wrap) |
+
+### Resampling & Geometry
+| Method | Description | Path |
+|--------|-------------|------|
+| `resize(newW, newH)` | Native AVX2 SIMD bilinear image scaling. | [Reference 📖](docs/REFERENCE.md#resize) |
+| `resizeNearest(newW, newH)` | Ultra-fast Nearest-Neighbor (point) scaling. | [Reference 📖](docs/REFERENCE.md#resizenearest) |
 | `resizeBicubic(newW, newH)` | Ultra-sharp Catmull-Rom Bicubic spline resampling. | [Reference 📖](docs/REFERENCE.md#resizebicubic) |
-| `resizeAreaAverage(newW, newH)` | Area-Average Anti-Aliasing downsampler. | [Reference 📖](docs/REFERENCE.md#resizeareaaverage) |
-| `blurKawase(radius, passes)` | High-speed Dual-Kawase blur filter. | [Reference 📖](docs/REFERENCE.md#blurkawase) |
+| `resizeAreaAverage(newW, newH)` | OpenMP-accelerated Area-Average downsampler. | [Reference 📖](docs/REFERENCE.md#resizeareaaverage) |
+| `crop(x, y, width, height)` | Crops sub-region into a new `FastImage`. | [Reference 📖](docs/REFERENCE.md#crop) |
+| `flipHorizontal()` / `flipVertical()` | Flips image along X or Y axis in-place. | [Reference 📖](docs/REFERENCE.md#flip) |
+
+### Convolutions & Blur Filters
+| Method | Description | Path |
+|--------|-------------|------|
+| `blurKawase(radius, passes)` | High-speed multi-pass Kawase blur filter. | [Reference 📖](docs/REFERENCE.md#blurkawase) |
+| `blurDualKawase(radius)` | Premium 2-pass Dual-Kawase down/upsample blur. | [Reference 📖](docs/REFERENCE.md#blurdualkawase) |
+| `blurGaussian(radius)` | Smooth separable Gaussian blur. | [Reference 📖](docs/REFERENCE.md#blurgaussian) |
+| `blurStack(radius)` | CSS `backdrop-filter` grade stack blur. | [Reference 📖](docs/REFERENCE.md#blurstack) |
+| `blurBox(radius)` | Fast box blur filter. | [Reference 📖](docs/REFERENCE.md#blurbox) |
+| `blurMipmapped(radius)` | Large-radius hierarchical down/upsample blur. | [Reference 📖](docs/REFERENCE.md#blurmipmapped) |
+
+### Color Operations & Export
+| Method | Description | Path |
+|--------|-------------|------|
+| `grayscale()` | Vectorized luminance weighting to monochrome. | [Reference 📖](docs/REFERENCE.md#grayscale) |
+| `adjustBrightness(factor)` | Scales pixel luminance (`1.0` = normal). | [Reference 📖](docs/REFERENCE.md#brightness) |
+| `adjustContrast(factor)` | Adjusts image contrast ratio. | [Reference 📖](docs/REFERENCE.md#contrast) |
+| `toBufferedImage()` | Converts native pixels to standard `BufferedImage`. | [Reference 📖](docs/REFERENCE.md#tobufferedimage) |
+| `getPixels(int[] dest)` | Fills a pre-allocated Java `int[]` array. | [Reference 📖](docs/REFERENCE.md#getpixels) |
+| `getDirectBuffer()` | Returns a direct `ByteBuffer` view of native memory. | [Reference 📖](docs/REFERENCE.md#getdirectbuffer) |
+| `getPointer()` | Returns a `fastpointer.Pointer` to native memory. | [Reference 📖](docs/REFERENCE.md#getpointer) |
 
 ---
 

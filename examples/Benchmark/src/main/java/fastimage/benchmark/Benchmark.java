@@ -21,8 +21,23 @@ public class Benchmark {
     }
 
     @org.openjdk.jmh.annotations.Benchmark
-    public Object benchmarkFastImageResize() {
+    public Object benchmarkFastImageResizeBilinear() {
         return srcImage.resize(1280, 720);
+    }
+
+    @org.openjdk.jmh.annotations.Benchmark
+    public Object benchmarkFastImageResizeNearest() {
+        return srcImage.resizeNearest(1280, 720);
+    }
+
+    @org.openjdk.jmh.annotations.Benchmark
+    public Object benchmarkFastImageResizeBicubic() {
+        return srcImage.resizeBicubic(1280, 720);
+    }
+
+    @org.openjdk.jmh.annotations.Benchmark
+    public Object benchmarkFastImageResizeAreaAverage() {
+        return srcImage.resizeAreaAverage(1280, 720);
     }
 
     @org.openjdk.jmh.annotations.Benchmark
