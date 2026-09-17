@@ -66,6 +66,13 @@ Standard Java `BufferedImage` operations suffer from heavy heap allocation overh
 - **Off-Heap Direct Memory** — Stores pixel buffers in native unmanaged memory to eliminate JVM GC pauses completely.
 - **Kawase & Mipmapped Blur** — Implements modern GPU-grade blur algorithms running in native C++ for UI overlays.
 
+| Feature | java.awt.image.BufferedImage | OpenCV / JavaCV Mat | FastImage |
+|:---|:---|:---|:---|
+| **Scaling & Filtering** | Slow scalar Java loops | C++ CPU/GPU Mat functions | **AVX2 SIMD Catmull-Rom Bicubic** |
+| **Blur Algorithms** | Slow Gaussian rasterizer | cv::GaussianBlur | **Dual Kawase & Mipmapped Blur** |
+| **Memory Architecture**| Managed JVM heap arrays | JNI Mat pointer wrappers | **Direct off-heap unmanaged memory** |
+| **GC Overhead @ 60 FPS**| Severe GC pause stutter | Moderate pointer churn | **Zero GC hot path** |
+
 ---
 
 ## Key Features
