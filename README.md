@@ -50,6 +50,7 @@ public class Demo {
 - [Architecture & Pipeline](#architecture--pipeline)
 - [Performance Benchmarks](#performance-benchmarks)
 - [API Quick Reference](#api-quick-reference)
+- [Technical Demos & Benchmarks](#technical-demos--benchmarks)
 - [Installation](#installation)
 - [Documentation](#documentation)
 - [Platform Support](#platform-support)
@@ -183,6 +184,20 @@ Benchmark.benchmarkFastImageKawaseBlur         thrpt    2   24.451   ops/s
 
 ---
 
+## Technical Demos & Benchmarks
+
+| Case | Java Example | Launcher | Description |
+|:---|:---|:---|:---|
+| **Interactive Showcase Demo** | [Demo.java](examples/BasicUsage/src/main/java/fastimage/Demo.java) | `run-demo.bat` | End-to-end interactive demonstration of native operations and verification checks. |
+| **JMH Microbenchmark Suite** | [Benchmark.java](examples/Benchmark/src/main/java/fastimage/benchmark/Benchmark.java) | `run-benchmark.bat` | Formal OpenJDK JMH throughput measurements across native execution kernels. |
+
+> [!IMPORTANT]
+> **Standardized File Naming**:
+> - The JMH microbenchmark harness file and class must **always** be named `Benchmark.java` (located under `examples/Benchmark/src/main/java/.../benchmark/Benchmark.java`).
+> - The primary interactive demo file and class must **always** be named `Demo.java` (located under `examples/BasicUsage/src/main/java/fastimage/Demo.java`).
+
+---
+
 ## Installation
 
 ### Option 1: Maven (Recommended)
@@ -278,11 +293,11 @@ Download the required JARs directly to add them to your classpath:
 
 ## Platform Support
 
-| Platform | Status |
-|----------|--------|
-| Windows 10/11 (x64) | ✅ Fully Supported |
-| Linux | 🔄 Planned |
-| macOS | 🔄 Planned |
+| Platform | Architecture | Status | Notes |
+|:---|:---|:---|:---|
+| Windows 10/11 | x64 | ✅ Fully Supported | Native AVX2 SIMD / OpenMP acceleration |
+| Linux | x64 | 🚧 Planned | Native SIMD port planned |
+| macOS | Apple Silicon, x64 | 🚧 Planned | Pure Java fallback or NEON SIMD planned |
 
 ---
 

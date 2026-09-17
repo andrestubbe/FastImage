@@ -6,9 +6,9 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * BasicUsage - Der einfachste Weg, FastImage zu nutzen.
+ * Demo - Der einfachste Weg, FastImage zu nutzen.
  */
-public class BasicUsage {
+public class Demo {
     public static void main(String[] args) {
         System.out.println("--- FastImage Basic Usage Example ---");
 
